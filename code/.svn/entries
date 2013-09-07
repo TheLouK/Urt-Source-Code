@@ -1,0 +1,88 @@
+10
+
+dir
+960
+svn://svn.clanwtf.net/repos/ioquake3-UrT-server-4.1/code
+svn://svn.clanwtf.net
+
+
+
+2012-03-10T01:28:33.716902Z
+954
+Rambetter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+780b6ab8-7a3c-df11-9965-003048f8fb46
+
+q3_ui
+dir
+
+asm
+dir
+
+sdl
+dir
+
+SDL12
+dir
+
+libs
+dir
+
+jpeg-6b
+dir
+
+libcurl
+dir
+
+AL
+dir
+
+tools
+dir
+
+renderer
+dir
+
+server
+dir
+
+qcommon
+dir
+
+game
+dir
+
+null
+dir
+
+botlib
+dir
+
+libspeex
+dir
+
+cgame
+dir
+
+ui
+dir
+
+client
+dir
+
+sys
+dir
+

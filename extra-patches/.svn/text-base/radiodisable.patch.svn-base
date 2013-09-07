@@ -1,0 +1,54 @@
+Index: code/server/sv_client.c
+===================================================================
+--- code/server/sv_client.c	(revision 808)
++++ code/server/sv_client.c	(working copy)
+@@ -1656,6 +1656,10 @@
+ 				argsFromOneMaxlen = MAX_SAY_STRLEN;
+ 			}
+ 			else if (Q_stricmp("ut_radio", Cmd_Argv(0)) == 0) {
++				if (sv_disableRadio->integer > 0) {
++					SV_SendServerCommand(cl, "print \"Radio is disabled on this server.\n\"");
++					return;
++				}
+ 				// We add 4 to this value because in a command such as
+ 				// "ut_radio 1 1 affirmative", the args at indices 1 and 2 each
+ 				// have length 1 and there is a space after them.
+Index: code/server/server.h
+===================================================================
+--- code/server/server.h	(revision 808)
++++ code/server/server.h	(working copy)
+@@ -308,6 +308,8 @@
+ 
+ extern	cvar_t	*sv_userinfoFloodProtect;
+ 
++extern	cvar_t	*sv_disableRadio;
++
+ extern	serverBan_t serverBans[SERVER_MAXBANS];
+ extern	int serverBansCount;
+ 
+Index: code/server/sv_init.c
+===================================================================
+--- code/server/sv_init.c	(revision 808)
++++ code/server/sv_init.c	(working copy)
+@@ -688,6 +688,8 @@
+ 
+ 	sv_userinfoFloodProtect = Cvar_Get ("sv_userinfoFloodProtect", "1", CVAR_ARCHIVE | CVAR_SERVERINFO );
+ 
++	sv_disableRadio = Cvar_Get("sv_disableRadio", "0", CVAR_ARCHIVE);
++
+ 	// initialize bot cvars so they are listed and can be set before loading the botlib
+ 	SV_BotInitCvars();
+ 
+Index: code/server/sv_main.c
+===================================================================
+--- code/server/sv_main.c	(revision 808)
++++ code/server/sv_main.c	(working copy)
+@@ -61,6 +61,8 @@
+ cvar_t	*sv_userinfoFloodProtect;	// whether to limit two client userinfo changes per 2000 milliseconds,
+ 					// default 1 (limit)
+ 
++cvar_t	*sv_disableRadio;
++
+ serverBan_t serverBans[SERVER_MAXBANS];
+ int serverBansCount = 0;
+ 

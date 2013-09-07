@@ -1,0 +1,9 @@
+Index: Makefile.local
+===================================================================
+--- Makefile.local	(revision 415)
++++ Makefile.local	(working copy)
+@@ -2,3 +2,4 @@
+ BUILD_CLIENT = 0
+ BUILD_GAME_SO = 0
+ BUILD_GAME_QVM = 0
++USE_VOIP = 0

@@ -1,0 +1,104 @@
+Index: code/server/sv_client.c
+===================================================================
+--- code/server/sv_client.c	(revision 832)
++++ code/server/sv_client.c	(working copy)
+@@ -1655,6 +1655,26 @@
+ 			/////////////////////////////////////////////////////////////////////
+ 			// separator for callvoteconnectprotect.patch and cyclemaplimit.patch
+ 			/////////////////////////////////////////////////////////////////////
++			qboolean goingToCallvoteCyclemap = qfalse;
++			if (Cmd_Argc() >= 2 && // If there are more arguments after "callvote cyclemap", it will still be a valid vote.
++					!Q_stricmp("callvote", Cmd_Argv(0)) &&
++					!Q_stricmp("cyclemap", Cmd_Argv(1))) {
++				int callvoteCyclemapWaitTime = sv_callvoteCyclemapWaitTime->integer;
++				if (sv.lastCallvoteCyclemapTime > 0 && // Allow cyclemap vote at start of map always.
++						callvoteCyclemapWaitTime > 0) {
++					if (callvoteCyclemapWaitTime > 1800) { // 30 minutes.
++						callvoteCyclemapWaitTime = 1800;
++					}
++					callvoteCyclemapWaitTime *= 1000;
++					int nextCallvoteCyclemapTime = sv.lastCallvoteCyclemapTime + callvoteCyclemapWaitTime;
++					if (nextCallvoteCyclemapTime > svs.time) {
++						SV_SendServerCommand(cl, "print \"Server won't accept repeated cyclemap vote for another %i seconds.\n\"",
++								((nextCallvoteCyclemapTime - svs.time) / 1000) + 1);
++						return;
++					}
++				}
++				goingToCallvoteCyclemap = qtrue;
++			}
+ 
+ 			argsFromOneMaxlen = -1;
+ 			if (Q_stricmp("say", Cmd_Argv(0)) == 0 ||
+@@ -1715,8 +1735,9 @@
+ 			////////////////////////////////////////////////////////////
+ 			// separator for forceautojoin.patch and cyclemaplimit.patch
+ 			////////////////////////////////////////////////////////////
+-
++			if (goingToCallvoteCyclemap) { sv.inCallvoteCyclemap = qtrue; }
+ 			VM_Call( gvm, GAME_CLIENT_COMMAND, cl - svs.clients );
++			if (goingToCallvoteCyclemap) { sv.inCallvoteCyclemap = qfalse; }
+ 		}
+ 	}
+ 	else if (!bProcessed)
+Index: code/server/server.h
+===================================================================
+--- code/server/server.h	(revision 832)
++++ code/server/server.h	(working copy)
+@@ -92,6 +92,8 @@
+ 	int				restartTime;
+ 	int				time;
+ 
++	int		lastCallvoteCyclemapTime;
++	qboolean	inCallvoteCyclemap;
+ 	////////////////////////////////////////////////////////
+ 	// separator for cyclemaplimit.patch and incognito.patch
+ 	////////////////////////////////////////////////////////
+@@ -314,6 +316,8 @@
+ 
+ extern	cvar_t	*sv_userinfoFloodProtect;
+ 
++extern	cvar_t	*sv_callvoteCyclemapWaitTime;
++
+ extern	serverBan_t serverBans[SERVER_MAXBANS];
+ extern	int serverBansCount;
+ 
+Index: code/server/sv_init.c
+===================================================================
+--- code/server/sv_init.c	(revision 832)
++++ code/server/sv_init.c	(working copy)
+@@ -691,6 +691,8 @@
+ 
+ 	sv_userinfoFloodProtect = Cvar_Get ("sv_userinfoFloodProtect", "1", CVAR_ARCHIVE | CVAR_SERVERINFO );
+ 
++	sv_callvoteCyclemapWaitTime = Cvar_Get("sv_callvoteCyclemapWaitTime", "0", CVAR_ARCHIVE);
++
+ 	// initialize bot cvars so they are listed and can be set before loading the botlib
+ 	SV_BotInitCvars();
+ 
+Index: code/server/sv_main.c
+===================================================================
+--- code/server/sv_main.c	(revision 832)
++++ code/server/sv_main.c	(working copy)
+@@ -61,6 +61,8 @@
+ cvar_t	*sv_userinfoFloodProtect;	// whether to limit two client userinfo changes per 2000 milliseconds,
+ 					// default 1 (limit)
+ 
++cvar_t	*sv_callvoteCyclemapWaitTime;
++
+ serverBan_t serverBans[SERVER_MAXBANS];
+ int serverBansCount = 0;
+ 
+@@ -201,6 +203,13 @@
+ 	//////////////////////////////////////////////////////
+ 	// separator for mutefix.patch and cyclemaplimit.patch
+ 	//////////////////////////////////////////////////////
++	if (sv.inCallvoteCyclemap &&
++			cl == NULL &&
++			(!Q_strncmp((char *) message, "print \"", 7)) &&
++			msglen >= 17 + 7 &&
++			!strcmp(" called a vote.\n\"", ((char *) message) + msglen - 17)) {
++		sv.lastCallvoteCyclemapTime = svs.time;
++	}
+ 	////////////////////////////////////////////////////////
+ 	// separator for cyclemaplimit.patch and incognito.patch
+ 	////////////////////////////////////////////////////////
