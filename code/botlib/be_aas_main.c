@@ -216,7 +216,7 @@ void AAS_ContinueInit(float time)
 		//save the AAS file
 		if (AAS_WriteAASFile(aasworld.filename))
 		{
-			botimport.Print(PRT_MESSAGE, "%s written succesfully\n", aasworld.filename);
+			botimport.Print(PRT_MESSAGE, "%s written successfully\n", aasworld.filename);
 		} //end if
 		else
 		{
@@ -247,7 +247,7 @@ int AAS_StartFrame(float time)
 	//
 	aasworld.frameroutingupdates = 0;
 	//
-	if (bot_developer)
+	if (botDeveloper)
 	{
 		if (LibVarGetValue("showcacheupdates"))
 		{
