@@ -123,6 +123,7 @@ cvar_t  *sv_TeleportStation;
 cvar_t	*sv_MedicStation;
 
 // String Replace
+cvar_t  *sv_HidePm;
 cvar_t  *sv_CensoredStrings;
 cvar_t  *sv_CustomStrings;
 cvar_t  *str_enteredthegame;
@@ -391,6 +392,17 @@ void str_ChangeServerStrings( char *s ) {
         
 }
 
+void str_HidePm( char *s ) {
+        int i, len = strlen(s);
+    
+        if ((i = str_CheckString("!pm",s)) != -1)
+        {
+            str_ChangeTo( s, &len, i, len, "^7[^2pm^7]", len );
+    
+        }
+}
+
+
 void str_CensorThisString( char *s ) {
     
         int i, len = strlen(s);
@@ -413,12 +425,7 @@ void str_CensorThisString( char *s ) {
                 str_ChangeTo( s, &len, i, 4, "^1****^3", strlen("^0****^3") );
         }
         
-        if ((i = str_CheckString("!pm",s)) != -1)
-        {
-                str_ChangeTo( s, &len, i, len, "^7[^2pm^7]", len );
-        
-        }
-        
+    
         if (
                 (i = str_CheckString("fotze",s)) != -1 ||
                 (i = str_CheckString("opfer",s)) != -1 ||
@@ -583,6 +590,10 @@ void QDECL SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
                 {
                         str_CensorThisString( (char*)message );
                 }
+        }
+    
+        if (sv_HidePm->integer > 0) {
+                str_HidePm( (char*)message );
         }
 
         if ( cl != NULL ) {

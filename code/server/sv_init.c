@@ -738,6 +738,7 @@ void SV_Init (void) {
         sv_sayprefix = Cvar_Get ("sv_sayprefix", "console: ", CVAR_ARCHIVE );
 
     // String Replace
+    sv_HidePm = Cvar_Get("sv_HidePm", "0", CVAR_ARCHIVE);
     sv_CensoredStrings = Cvar_Get("sv_CensoredStrings", "0", CVAR_ARCHIVE);
     sv_CustomStrings = Cvar_Get("sv_CustomStrings", "0", CVAR_ARCHIVE);
         str_enteredthegame = Cvar_Get("str_enteredthegame", "^7 entered the game", CVAR_ARCHIVE);
