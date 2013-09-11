@@ -632,7 +632,7 @@ static void SV_AddBanToList(qboolean isexception)
 		return;
 	}
 
-	if(serverBansCount > sizeof(serverBans) / sizeof(*serverBans))
+	if(serverBansCount > ARRAY_LEN(serverBans))
 	{
 		Com_Printf ("Error: Maximum number of bans/exceptions exceeded.\n");
 		return;
@@ -760,7 +760,7 @@ static void SV_DelBanFromList(qboolean isexception)
 	
 	if(index == serverBansCount - 1)
 		serverBansCount--;
-	else if(index < sizeof(serverBans) / sizeof(*serverBans) - 1)
+	else if(index < ARRAY_LEN(serverBans) - 1)
 	{
 		memmove(serverBans + index, serverBans + index + 1, (serverBansCount - index - 1) * sizeof(*serverBans));
 		serverBansCount--;
