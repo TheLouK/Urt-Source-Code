@@ -431,6 +431,7 @@ extern	cvar_t	*sv_sayprefix;
 extern	cvar_t	*sv_MedicStation;
 
 // String Replace
+extern  cvar_t  *sv_HidePm;
 extern  cvar_t  *sv_CensoredStrings;
 extern  cvar_t  *sv_CustomStrings;
 extern  cvar_t  *str_enteredthegame;
