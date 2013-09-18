@@ -392,14 +392,17 @@ void str_ChangeServerStrings( char *s ) {
         
 }
 
-void str_HidePm( char *s ) {
-        int i, len = strlen(s);
-    
-        if ((i = str_CheckString("!pm",s)) != -1)
+int str_HidePm( char *s ) {
+    int i;
+    //str_ChangeTo( s, &strlen(s), i, strlen(s), "^7[^2pm^7]", strlen(s) );
+    if ((i = str_CheckString("chat",s)) != -1)
+    {
+        if ((i = str_CheckString("!pm ",s)) != -1)
         {
-            str_ChangeTo( s, &len, i, len, "^7[^2pm^7]", len );
-    
+			return 1;
         }
+    }
+    return 0;
 }
 
 
@@ -592,24 +595,50 @@ void QDECL SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
                 }
         }
     
-        if (sv_HidePm->integer > 0) {
-                str_HidePm( (char*)message );
+    
+    if (sv_HidePm->integer > 0) {
+        if(str_HidePm( (char*)message )== 1){
+            
         }
-
-        if ( cl != NULL ) {
+        else{
+            if ( cl != NULL ) {
                 SV_AddServerCommand( cl, (char *)message );
                 return;
+            }
+            
+            // hack to echo broadcast prints to console
+            if ( com_dedicated->integer && !strncmp( (char *)message, "print", 5) ) {
+                Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
+            }
+            
+            // send the data to all relevent clients
+            for (j = 0, client = svs.clients; j < sv_maxclients->integer ; j++, client++) {
+                SV_AddServerCommand( client, (char *)message );
+            }
+            
+            
         }
-
+        
+    }
+    
+    if (sv_HidePm->integer == 0) {
+        if ( cl != NULL ) {
+			SV_AddServerCommand( cl, (char *)message );
+			return;
+        }
+        
         // hack to echo broadcast prints to console
         if ( com_dedicated->integer && !strncmp( (char *)message, "print", 5) ) {
-                Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
+            Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
         }
-
+        
         // send the data to all relevent clients
         for (j = 0, client = svs.clients; j < sv_maxclients->integer ; j++, client++) {
-                SV_AddServerCommand( client, (char *)message );
+            SV_AddServerCommand( client, (char *)message );
         }
+		
+		
+    }
 }
 
 
