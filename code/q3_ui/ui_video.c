@@ -316,7 +316,7 @@ static InitialVideoOptions_s s_ivo_templates[] =
 	}
 };
 
-#define NUM_IVO_TEMPLATES ( sizeof( s_ivo_templates ) / sizeof( s_ivo_templates[0] ) )
+#define NUM_IVO_TEMPLATES ( ARRAY_LEN( s_ivo_templates ) )
 
 static const char *builtinResolutions[ ] =
 {
@@ -895,7 +895,7 @@ void GraphicsOptions_MenuInit( void )
 	{
 		char* s = resbuf;
 		unsigned int i = 0;
-		while( s && i < sizeof(detectedResolutions)/sizeof(detectedResolutions[0])-1)
+		while( s && i < ARRAY_LEN(detectedResolutions)-1 )
 		{
 			detectedResolutions[i++] = s;
 			s = strchr(s, ' ');
