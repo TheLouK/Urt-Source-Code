@@ -67,6 +67,9 @@ cvar_t	*sv_block1337;			// whether to block clients with qport 1337,
 
 cvar_t	*sv_callvoteRequiredConnectTime;
 
+cvar_t	*sv_demonotice;		// notice to print to a client being recorded server-side
+cvar_t	*sv_democommands;
+
 cvar_t	*sv_limitConnectPacketsPerIP;
 cvar_t	*sv_maxClientsPerIP;
 
@@ -106,6 +109,9 @@ cvar_t	*sv_specChatGlobal;		// whether to broadcast spec chat globally
 cvar_t	*sv_tellprefix;
 cvar_t	*sv_sayprefix;
 
+cvar_t	*sv_HidePm;
+cvar_t	*sv_SpecJoin;
+
 cvar_t *sv_moderatorenable;     // MaJ - 0 to disable all new mod features, 1 to enable them.
 cvar_t *sv_moderatorremoteenable;   // MaJ - 1 to allow moderator commands to be issued from out of game.
 cvar_t *sv_moderatorpass[MAX_MOD_LEVELS];   // MaJ - Mod passwords for each mod level. (empty string for disabled)
@@ -123,7 +129,6 @@ cvar_t  *sv_TeleportStation;
 cvar_t	*sv_MedicStation;
 
 // String Replace
-cvar_t  *sv_HidePm;
 cvar_t  *sv_CensoredStrings;
 cvar_t  *sv_CustomStrings;
 cvar_t  *str_enteredthegame;

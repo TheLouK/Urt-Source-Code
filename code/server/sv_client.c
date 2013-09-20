@@ -1215,6 +1215,13 @@ gotnewcl:
 	Netchan_Setup (NS_SERVER, &newcl->netchan , from, qport);
 	// init the netchan queue
 	newcl->netchan_end_queue = &newcl->netchan_start_queue;
+        
+        // clear server-side demo recording
+        newcl->demo_recording = qfalse;
+        newcl->demo_file = -1;
+        newcl->demo_waiting = qfalse;
+        newcl->demo_backoff = 1;
+        newcl->demo_deltas = 0;
 
 	// save the userinfo
 	Q_strncpyz( newcl->userinfo, userinfo, sizeof(newcl->userinfo) );
@@ -2232,6 +2239,10 @@ The client is going to disconnect, so remove the connection immediately  FIXME: 
 =================
 */
 static void SV_Disconnect_f( client_t *cl ) {
+        // stop server-side demo (if any)
+	if (cl->demo_recording) {
+		Cbuf_ExecuteText(EXEC_NOW, va("stopserverdemo %d", (int)(cl-svs.clients)));
+	}
 	SV_DropClient( cl, "disconnected" );
 }
 
@@ -3011,6 +3022,7 @@ static ucmd_t ucmds[] = {
     {"modlogin", SV_ModLogin_f},
     {"modlogout", SV_ModLogout_f},
     {"mod", SV_ModCommand_f},
+
 #ifdef USE_VOIP
 	{"voip", SV_Voip_f},
 #endif
@@ -3259,6 +3271,23 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK ) {
 			if (goingToCallvoteCyclemap) { sv.inCallvoteCyclemap = qtrue; }
 			VM_Call( gvm, GAME_CLIENT_COMMAND, cl - svs.clients );
 			if (goingToCallvoteCyclemap) { sv.inCallvoteCyclemap = qfalse; }
+            if (sv_democommands->integer > 0) {
+                if (!Q_stricmp("demome", Cmd_Argv(0))) {
+                    if (!(cl->demo_recording)) {
+                        Cbuf_ExecuteText(EXEC_NOW, va("startserverdemo %d", (int)(cl-svs.clients)));
+                    }
+                    else {
+                        SV_SendServerCommand(cl,"print \"You are already recording a server demo.\n\"");
+                    }
+                    return;
+                }
+                if (!Q_stricmp("stopdemo", Cmd_Argv(0)))
+                {
+                    Cbuf_ExecuteText(EXEC_NOW, va("stopserverdemo %d", (int)(cl-svs.clients)));
+                    SV_SendServerCommand(cl,"print \"Your demo was stopped.\n\"");
+                    return;
+                }
+            }
 		}
 	}
 	else if (!bProcessed)

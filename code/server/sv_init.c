@@ -520,6 +520,9 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 	// create a baseline for more efficient communications
 	SV_CreateBaseline ();
+        
+        // stop server-side demo (if any)
+	Cbuf_ExecuteText(EXEC_NOW, "stopserverdemo all");
 
 	for (i=0 ; i<sv_maxclients->integer ; i++) {
 		// send the new gamestate to all connected clients
@@ -701,6 +704,9 @@ void SV_Init (void) {
 	sv_block1337 = Cvar_Get ("sv_block1337", "0", CVAR_ARCHIVE );
 
 	sv_callvoteRequiredConnectTime = Cvar_Get("sv_callvoteRequiredConnectTime", "0", CVAR_ARCHIVE);
+        
+        sv_demonotice = Cvar_Get ("sv_demonotice", "Smile! You're on camera!", CVAR_ARCHIVE);
+        sv_democommands = Cvar_Get("sv_democommands", "0", CVAR_ARCHIVE);
 
 	sv_limitConnectPacketsPerIP = Cvar_Get ("sv_limitConnectPacketsPerIP", "0", CVAR_ARCHIVE );
 	sv_maxClientsPerIP = Cvar_Get ("sv_maxClientsPerIP", "0", CVAR_ARCHIVE );
@@ -736,9 +742,11 @@ void SV_Init (void) {
 
         sv_tellprefix = Cvar_Get ("sv_tellprefix", "console_tell: ", CVAR_ARCHIVE );
         sv_sayprefix = Cvar_Get ("sv_sayprefix", "console: ", CVAR_ARCHIVE );
+        
+        sv_HidePm = Cvar_Get ("sv_HidePm", "0", CVAR_ARCHIVE );
+        sv_SpecJoin = Cvar_Get ("sv_sayprefix", "0", CVAR_ARCHIVE );
 
     // String Replace
-    sv_HidePm = Cvar_Get("sv_HidePm", "0", CVAR_ARCHIVE);
     sv_CensoredStrings = Cvar_Get("sv_CensoredStrings", "0", CVAR_ARCHIVE);
     sv_CustomStrings = Cvar_Get("sv_CustomStrings", "0", CVAR_ARCHIVE);
         str_enteredthegame = Cvar_Get("str_enteredthegame", "^7 entered the game", CVAR_ARCHIVE);
@@ -848,6 +856,9 @@ void SV_Shutdown( char *finalmsg ) {
 	}
 
 	Com_Printf( "----- Server Shutdown (%s) -----\n", finalmsg );
+        
+        // stop server-side demos (if any)
+	Cbuf_ExecuteText(EXEC_NOW, "stopserverdemo all");
 
 	NET_LeaveMulticast6();
 

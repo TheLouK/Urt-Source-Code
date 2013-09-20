@@ -226,6 +226,12 @@ typedef struct client_s {
 	// separator for ip2loc.patch and goto.patch
 	////////////////////////////////////////////
 
+    qboolean    demo_recording; // are we currently recording this client?
+        fileHandle_t    demo_file;      // the file we are writing the demo to
+        qboolean        demo_waiting;   // are we still waiting for the first non-delta frame?
+        int             demo_backoff;   // how many packets (-1 actually) between non-delta frames?
+        int             demo_deltas;    // how many delta frames did we let through so far?
+    
 } client_t;
 
 //=============================================================================
@@ -404,6 +410,9 @@ extern	cvar_t	*sv_ip2locEnable;
 extern	cvar_t	*sv_ip2locHost;
 extern	cvar_t	*sv_ip2locPassword;
 
+extern	cvar_t	*sv_demonotice;
+extern	cvar_t	*sv_democommands;
+
 extern	cvar_t	*sv_loadOnlyNeededPaks;
 
 extern	cvar_t	*sv_logRconArgs;
@@ -428,10 +437,12 @@ extern	cvar_t	*sv_specChatGlobal;
 extern	cvar_t	*sv_tellprefix;
 extern	cvar_t	*sv_sayprefix;
 
+extern	cvar_t	*sv_SpecJoin;
+extern	cvar_t	*sv_HidePm;
+
 extern	cvar_t	*sv_MedicStation;
 
 // String Replace
-extern  cvar_t  *sv_HidePm;
 extern  cvar_t  *sv_CensoredStrings;
 extern  cvar_t  *sv_CustomStrings;
 extern  cvar_t  *str_enteredthegame;
@@ -554,6 +565,7 @@ qboolean SV_ModCommandAllowed(char *allowed, char *command);
 // sv_ccmds.c
 //
 void SV_Heartbeat_f( void );
+void SVD_WriteDemoFile(const client_t*, const msg_t*);
 
 //
 // sv_snapshot.c
