@@ -1686,9 +1686,6 @@ static void SVD_CleanPlayerName(char *name)
                 if (Q_IsColorString(src)) {
                         src++;
                 }
-                else if (c == ':' || c == '\\' || c == '/' || c == '*' || c == '?') {
-                        *dst++ = '%';
-                }
                 else if (c > ' ' && c < 0x7f) {
                         *dst++ = c;
                 }
