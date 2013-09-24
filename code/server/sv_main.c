@@ -406,6 +406,10 @@ int str_HidePm( char *s ) {
         {
 			return 1;
         }
+        if ((i = str_CheckString("!demo ",s)) != -1)
+        {
+			return 1;
+        }
     }
     return 0;
 }
