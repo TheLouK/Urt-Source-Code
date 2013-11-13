@@ -744,7 +744,9 @@ void SV_Init (void) {
         sv_sayprefix = Cvar_Get ("sv_sayprefix", "console: ", CVAR_ARCHIVE );
         
         sv_HidePm = Cvar_Get ("sv_HidePm", "0", CVAR_ARCHIVE );
-        sv_SpecJoin = Cvar_Get ("sv_sayprefix", "0", CVAR_ARCHIVE );
+        sv_hideBotCmds = Cvar_Get("sv_hideBotCmds", "0", CVAR_ARCHIVE);
+        sv_logPath = Cvar_Get("sv_logPath", "", CVAR_ARCHIVE);
+        sv_SpecJoin = Cvar_Get ("sv_SpecJoin", "0", CVAR_ARCHIVE );
 
     // String Replace
     sv_CensoredStrings = Cvar_Get("sv_CensoredStrings", "0", CVAR_ARCHIVE);

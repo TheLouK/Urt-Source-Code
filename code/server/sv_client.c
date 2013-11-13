@@ -1591,6 +1591,80 @@ void SV_ClientEnterWorld( client_t *client, usercmd_t *cmd ) {
 }
 
 /*
+==================
+SV_LogAction_f
+==================
+*/
+static void SV_LogAction_f(client_t *cl, char *action, char *args) { 
+    
+    FILE *fp;
+    int	min, tens, sec;
+
+    if (!Q_stricmp(sv_logPath->string, "")) {
+        //sv_LogPath not specified in server.cfg
+        Com_DPrintf("Debug: sv_logPath not specified. Aborting action logging.\n");
+        return;
+    }
+    
+    fp = fopen(sv_logPath->string, "a");
+    
+    if (!fp) {
+        //failed to open file stream
+        Com_DPrintf("Debug: sv_LogAction_f failed to open file stream. Aborting action logging.\n");
+        return;
+    }
+        
+    sec = sv.time / 1000; 
+    min = sec / 60;
+    sec -= min * 60;
+    tens = sec / 10;
+    sec -= tens * 10;
+    
+    // writing the log
+    fprintf(fp, "%3i:%i%i %s: %i %s\n", min, tens, sec, action, (int)(cl - svs.clients), args); 
+    fclose(fp);
+                    
+}
+
+/*
+==================
+SV_LogB3Command_f
+==================
+*/
+static void SV_LogB3Command_f(client_t *cl, char *action, char *args) { 
+    
+    FILE *fp;
+    int	min, tens, sec;
+    char *playername;
+
+    if (!Q_stricmp(sv_logPath->string, "")) {
+        //sv_LogPath not specified in server.cfg
+        Com_DPrintf("Debug: sv_logPath not specified. Aborting action logging.\n");
+        return;
+    }
+    
+    fp = fopen(sv_logPath->string, "a");
+    
+    if (!fp) {
+        //failed to open file stream
+        Com_DPrintf("Debug: sv_LogB3Command_f failed to open file stream. Aborting action logging.\n");
+        return;
+    }
+        
+    sec = sv.time / 1000; 
+    min = sec / 60;
+    sec -= min * 60;
+    tens = sec / 10;
+    sec -= tens * 10;
+    playername = Q_CleanStr(cl->name);
+    
+    // writing the log
+    fprintf(fp, "%3i:%i%i %s: %i %s: %s\n", min, tens, sec, action, (int)(cl - svs.clients), playername, args); 
+    fclose(fp);
+                    
+}
+
+/*
 ============================================================
 
 CLIENT COMMAND EXECUTION
@@ -3088,6 +3162,8 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK ) {
 	int	i;
 	char	*arg;
 	qboolean exploitDetected;
+        
+        char action[64];
 	
 	Cmd_TokenizeString( s );
 
@@ -3114,7 +3190,29 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK ) {
 		// pass unknown strings to the game
 		if (!u->name && sv.state == SS_GAME) {
 			Cmd_Args_Sanitize();
-
+                        
+                if (sv_hideBotCmds -> integer > 0) {
+                    char *p = Cmd_Argv(1);
+                    char c;
+                    
+                    do {
+                        c = *p;
+                        p++;
+                    }
+                    while (c == ' ');
+                    
+                    if ((c == '!') || (c == '@') || (c == '&')) {
+                        strcpy(action,"say");
+                        SV_LogB3Command_f(cl,action,Cmd_Args());
+                        argsFromOneMaxlen = MAX_SAY_STRLEN;
+           
+                        char cmd[MAX_SAY_STRLEN];
+                        Q_snprintf(cmd, sizeof(cmd), "tell %i \"^3%s\"\n", (int)(cl - svs.clients), Cmd_Args());
+                        Cmd_ExecuteString(cmd);
+                        return;
+                    }
+                }
+                        
 			if (cl->muted && (!Q_stricmp("say", Cmd_Argv(0)) ||
 						!Q_stricmp("say_team", Cmd_Argv(0)) ||
 						!Q_stricmp("tell", Cmd_Argv(0)) ||
@@ -3123,6 +3221,8 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK ) {
 				SV_SendServerCommand(cl, "print \"You are currently muted and may not perform that action.\n\"");
 				return;
 			}
+                
+                
 			///////////////////////////////////////////////////////////////
 			// separator for mutefix.patch and callvoteconnectprotect.patch
 			///////////////////////////////////////////////////////////////

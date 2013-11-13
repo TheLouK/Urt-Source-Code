@@ -110,6 +110,9 @@ cvar_t	*sv_tellprefix;
 cvar_t	*sv_sayprefix;
 
 cvar_t	*sv_HidePm;
+cvar_t *sv_hideBotCmds;
+cvar_t *sv_logPath;
+
 cvar_t	*sv_SpecJoin;
 
 cvar_t *sv_moderatorenable;     // MaJ - 0 to disable all new mod features, 1 to enable them.
