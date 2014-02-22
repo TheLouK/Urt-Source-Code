@@ -1686,6 +1686,10 @@ static void SVD_CleanPlayerName(char *name)
                 if (Q_IsColorString(src)) {
                         src++;
                 }
+                else if (c == ':' || c == '\\' || c == '/' || c == '*' || c == '?') {
+                    *dst++ = '%';
+                }
+
                 else if (c > ' ' && c < 0x7f) {
                         *dst++ = c;
                 }
@@ -1721,9 +1725,13 @@ static void SV_NameServerDemo(char *filename, int length, const client_t *client
                 // TODO: when the string gets too long (what exactly is
                 // the limit?) it get's cut off at the end ruining the
                 // file extension
+
                 Com_sprintf(
-                    filename, length-1, "serverdemos/%s.dm_%d",
+                    filename, length-1, "serverdemos/%.4d-%.2d-%.2d_%.2d-%.2d-%.2d_%s_%d.dm_%d",
+                    time.tm_year+1900, time.tm_mon, time.tm_mday,
+                    time.tm_hour, time.tm_min, time.tm_sec,
                     playername,
+                    Sys_Milliseconds(),
                     PROTOCOL_VERSION
                     );
                 filename[length-1] = '\0';
