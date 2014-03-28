@@ -293,6 +293,44 @@ static int	FloatAsInt( float f ) {
 	return fi.i;
 }
 
+char list[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' }; 
+char player[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
+
+char SV_GetRandomWeapon() {
+    int nulls = 0;
+    // Check how many NULL weapons are at player[] array
+    for (int i = 0; i < sizeof(player); i++) {
+        if (player[i] == NULL) {
+            nulls++;
+        }
+    }
+
+    // If all are NULL, re-fill the array
+    if (nulls == sizeof(list)) {
+        for (int i = 0; i < sizeof(list); i++) {
+            player[i] = list[i];
+        }
+    }
+
+    // Get a random weapon
+    char weapon = player[rand()%sizeof(player)];
+
+    // If weapon is NULL then we need another one!
+    if (weapon == NULL) {
+        while (weapon == NULL) {
+            weapon = player[rand()%sizeof(player)];
+        }
+    }
+    
+    // We make the selected weapon NULL in the list
+    for (int i = 0; i < sizeof(player); i++) {
+        if (weapon == player[i] && player[i] != NULL) {
+            player[i] = NULL;
+        }
+    }
+    return weapon;
+}
+
 void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	client_t		*clkilled;
 	client_t		*clkiller;
@@ -309,7 +347,14 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	
 		// If the killer is not the killed (suicide)
 		if ( atoi(killer) != atoi(killed) ) {
-
+			// If Beretta
+			if (!Q_stricmp( wpn, "14:" )) {
+					Cmd_ExecuteString (va("gw %s %c", killer, SV_GetRandomWeapon()));
+			}
+			// If Desert Eagle
+			else if (!Q_stricmp( wpn, "15:" )) {
+					Cmd_ExecuteString (va("gw %s %c", killer, SV_GetRandomWeapon()));
+			}
 		}
 	}
 }
