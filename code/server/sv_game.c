@@ -295,6 +295,8 @@ static int	FloatAsInt( float f ) {
 
 char list[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' }; 
 char player[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
+char pistols[2] = { 'B', 'C' }; 
+int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 }
 
 char SV_GetRandomWeapon() {
     int nulls = 0;
@@ -354,6 +356,14 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			// If Desert Eagle
 			else if (!Q_stricmp( wpn, "15:" )) {
 					Cmd_ExecuteString (va("gw %s %c", killer, SV_GetRandomWeapon()));
+			}
+			// If Spas
+			else if (!Q_stricmp( wpn, "16:" )) {
+					Cmd_ExecuteString (va("gw %s %c +%i", killer, SV_GetRandomWeapon(), amo[rand()%sizeof(amo)]));
+			}
+			// If UMP45
+			else if (!Q_stricmp( wpn, "17:" )) {
+					Cmd_ExecuteString (va("gw %s B +30", killer));
 			}
 		}
 	}
