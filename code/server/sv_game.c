@@ -603,6 +603,32 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	}
 }
 
+void SV_FlagTaken( char *client ) {
+	client_t		*clclient;
+	playerState_t	*psclient;
+
+	clclient = &svs.clients[ atoi(client) ];
+	int sclient = atoi( client );
+	char weapon = weaponforpistol[rand() % 11];
+	int amo2 = amo[rand()%11];
+	Cmd_ExecuteString (va("gw %i +%c-@", sclient, weapon));
+	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Taken! You lost your weapons and won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
+	Cmd_ExecuteString (va("gw %i %c %i 0", sclient, weapon, amo2));
+}
+
+void SV_FlagCaptured( char *client ) {
+	client_t		*clclient;
+	playerState_t	*psclient;
+
+	int sclient = atoi( client );
+	clclient = &svs.clients[ atoi(client) ];
+	char weapon = pistols[rand() % 2];
+	int amo2 = amo[rand()%11];
+	Cmd_ExecuteString (va("gw %i %c +%i", sclient, weapon, amo2));
+	Cmd_ExecuteString (va("gw %i +A", sclient));
+	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! You won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
+}
+
 void Check_Com_Printf ( const char *text ) {
 	static char data[BIG_INFO_STRING];
 	
@@ -614,9 +640,14 @@ void Check_Com_Printf ( const char *text ) {
 	if( !Q_stricmp( Cmd_Argv(0), "Kill:" ) ) {
 		SV_Event_Kill( Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
 	}
-
-	if( !Q_stricmp( Cmd_Argv(0), "ClientSpawn:" ) ) {
+	else if( !Q_stricmp( Cmd_Argv(0), "ClientSpawn:" ) ) {
 		SV_ClientSpawn( atoi( Cmd_Argv(1) ) );
+	}
+	else if( (!Q_stricmp( Cmd_Argv(0), "Item:" ) && !Q_stricmp( Cmd_Argv(2), "team_CTF_redflag")) || (!Q_stricmp( Cmd_Argv(0), "Item:" ) && !Q_stricmp( Cmd_Argv(2), "team_CTF_blueflag")) ) {
+		SV_FlagTaken( Cmd_Argv(1) );
+	}
+	else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "2:") ) {
+		SV_FlagCaptured( Cmd_Argv(1) );
 	}
 	
 	Com_Printf( text );
