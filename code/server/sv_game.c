@@ -293,44 +293,166 @@ static int	FloatAsInt( float f ) {
 	return fi.i;
 }
 
-char list[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' }; 
-char player[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
+char weaponforpistol[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
+char items[5] = { 'D', 'E', 'C', 'A', 'F' };
 char pistols[2] = { 'B', 'C' }; 
-int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 }
+int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 };
+int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
+int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
+char healthops[2] = { '+', '-' };
 
-char SV_GetRandomWeapon() {
-    int nulls = 0;
-    // Check how many NULL weapons are at player[] array
-    for (int i = 0; i < sizeof(player); i++) {
-        if (player[i] == NULL) {
-            nulls++;
-        }
-    }
+char SV_GetRandomWeapon( client_t *cl ) {
+	char		weapon;
+	int			random;
+	int			i;
+	int			qtrues;
 
-    // If all are NULL, re-fill the array
-    if (nulls == sizeof(list)) {
-        for (int i = 0; i < sizeof(list); i++) {
-            player[i] = list[i];
-        }
-    }
+	qtrues = 0;
+		
+	for ( i = 0; i < 11; i++ ) {
+		if ( cl->weapongivenforpistol[i] == qtrue ) {
+			qtrues++;
+		}
+	}
+		
+	if ( qtrues == 11 ) {
+		for ( i = 0; i < 11; i++ ) {
+			cl->weapongivenforpistol[i] = qfalse;
+		}
+	}
+	
+	//Pistol Kill
+    TRYAGAINPISTOL:
+		
+		random = rand() % 11;
+		// If you already have the weap do a new random
+		if ( cl->weapongivenforpistol[random] == qtrue ) {
+			goto TRYAGAINPISTOL;
+		}
+		else {
+			weapon = weaponforpistol[random];
+			cl->weapongivenforpistol[random] = qtrue;
+			return weapon;
+		}
+}
 
-    // Get a random weapon
-    char weapon = player[rand()%sizeof(player)];
+char SV_GetRandomItem( client_t *cl ) {
+	char		item;
+	int			random;
+	int			i;
+	int			qtrues;
 
-    // If weapon is NULL then we need another one!
-    if (weapon == NULL) {
-        while (weapon == NULL) {
-            weapon = player[rand()%sizeof(player)];
-        }
-    }
-    
-    // We make the selected weapon NULL in the list
-    for (int i = 0; i < sizeof(player); i++) {
-        if (weapon == player[i] && player[i] != NULL) {
-            player[i] = NULL;
-        }
-    }
-    return weapon;
+	qtrues = 0;
+		
+	for ( i = 0; i < 5; i++ ) {
+		if ( cl->gunitems[i] == qtrue ) {
+			qtrues++;
+		}
+	}
+		
+	if ( qtrues == 5 ) {
+		for ( i = 0; i < 5; i++ ) {
+			cl->gunitems[i] = qfalse;
+		}
+	}
+
+	
+    TRYAGAINITEM:
+
+		random = rand() % 5;
+		// If you already have the item do a new item
+		if ( cl->gunitems[random] == qtrue ) {
+			goto TRYAGAINITEM;
+		}
+		else {
+			item = items[random];
+			cl->gunitems[random] = qfalse;
+			return item;
+		}
+}
+
+char *SV_NameWeapon(weap2) {
+	char *weapon = " ";
+	if (weap2=='N') {
+		weapon="^6Sr8";
+	}
+	else if (weap2=='O') {
+		weapon="^5AK103";
+	}
+	else if (weap2=='Q') {
+		weapon="^4NEGEV";
+	}
+	else if (weap2=='F') {
+		weapon="^3UMP45";
+	}
+	else if (weap2=='I') {
+		weapon="^5G36";
+	}
+	else if (weap2=='G') {
+		weapon="^1HK69";
+	}
+	else if (weap2=='H') {
+		weapon="^5LR300";
+	}
+	else if (weap2=='D') {
+		weapon="^3Spas";
+	}
+	else if (weap2=='S') {
+		weapon="^5M4A1";
+	}
+	else if (weap2=='J') {
+		weapon="^6PSG1";
+	}
+	else if (weap2=='E') {
+		weapon="^3MP5K";
+	}
+	else if (weap2=='B') {
+		weapon="^2Beretta";
+	}
+	else if (weap2=='C') {
+		weapon="^2Desert Eagle";
+	}
+	else if (weap2=='K') {
+		weapon="^1HE Grenades";
+	}
+	return weapon;
+}
+
+char *SV_NameItem(item2) {
+	char *item = " ";
+	if (item2=='D') {
+		item="Silencer";
+	}
+	else if (item2=='E') {
+		item="Laser Sight";
+	}
+	else if (item2=='C') {
+		item="Ultra Medkit";
+	}
+	else if (item2=='A') {
+		item="Kevlar";
+	}
+	else if (item2=='F') {
+		item="Helmet";
+	}
+	return item;
+}
+
+void SV_ClientSpawn( int clID ) {
+	client_t		*cl;
+	playerState_t	*ps;
+	int				i;
+
+	cl = &svs.clients[ clID ];
+	ps = SV_GameClientNum( clID );
+	
+	// IF client spawn all the "have weapon" qboolean are set to qfalse
+	for ( i = 0; i < 11; i++ ) {
+		cl->weapongivenforpistol[i] = qfalse;
+		if (i < 5) {
+			cl->gunitems[i] = qfalse;
+		}
+	}
 }
 
 void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
