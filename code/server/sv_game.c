@@ -461,6 +461,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	playerState_t	*pskilled;
 	playerState_t	*pskiller;
 
+	int skiller = atoi( killer );
 	clkilled = &svs.clients[ atoi(killed) ];
 	clkiller = &svs.clients[ atoi(killer) ];
 	pskilled = SV_GameClientNum( atoi(killed) );
@@ -475,43 +476,43 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			// Knife
 			if (!Q_stricmp( wpn, "12:" )) {
 				int health2 = health[rand()%8];
-				Cmd_ExecuteString (va("gh %s +%i", killer, health2));
+				Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Knife ^7kill ^1= ^7Health: ^2+%i\"", health2);
 			}
 			if (!Q_stricmp( wpn, "13:" )) {
 				char item = SV_GetRandomItem( clkiller );
-				Cmd_ExecuteString (va("gi %s %c", killer, item));
+				Cmd_ExecuteString (va("gi %i %c", skiller, item));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Throwing Knife ^7kill ^1= ^6%s\"", SV_NameItem(item));
 			}
 			// Beretta
 			if (!Q_stricmp( wpn, "14:" )) {
 				char weapon = SV_GetRandomWeapon( clkiller );
-				Cmd_ExecuteString (va("gw %s %c", killer, weapon));
+				Cmd_ExecuteString (va("gw %i %c", skiller, weapon));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^2Beretta ^7kill ^1= %s\"", SV_NameWeapon(weapon));
 			}
 			// Desert Eagle
 			else if (!Q_stricmp( wpn, "15:" )) {
 				char weapon = SV_GetRandomWeapon( clkiller );
-				Cmd_ExecuteString (va("gw %s %c", killer, weapon));
+				Cmd_ExecuteString (va("gw %i %c", skiller, weapon));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^2Desert Eagle ^7kill ^1= %s\"", SV_NameWeapon(weapon));
 			}
 			// Spas
 			else if (!Q_stricmp( wpn, "16:" )) {
 				char weapon = weaponforpistol[rand() % 11];
 				int amo2 = amo[rand()%11];
-				Cmd_ExecuteString (va("gw %s %c +%i", killer, weapon, amo2));
+				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, amo2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3Spas ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
 			}
 			// UMP45
 			else if (!Q_stricmp( wpn, "17:" )) {
 				char weapon = 'B';
-				Cmd_ExecuteString (va("gw %s %c +30", killer, weapon));
+				Cmd_ExecuteString (va("gw %i %c +30", skiller, weapon));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3UMP45 ^7kill ^1= %s ^4+30\"", SV_NameWeapon(weapon));
 			}
 			// MP5K
 			else if (!Q_stricmp( wpn, "18:" )) {
 				char weapon = 'C';
-				Cmd_ExecuteString (va("gw %s %c +15", killer, weapon));
+				Cmd_ExecuteString (va("gw %i %c +15", skiller, weapon));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3MP5K ^7kill ^1= %s ^4+15\"", SV_NameWeapon(weapon));
 			}
 			// LR
@@ -526,14 +527,14 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			else if (!Q_stricmp( wpn, "21:" )) {
 				char weapon = 'K';
 				int nades2 = nades[rand()%12];
-				Cmd_ExecuteString (va("gw %s %c +%i", killer, weapon, nades2));
+				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, nades2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6PSG1 ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), nades2);
 			}
 			// HK69
 			else if ((!Q_stricmp( wpn, "22:" )) || (!Q_stricmp( wpn, "37:" ))) {
 				int health2 = health[rand()%8];
 				char operator = healthops[rand()%2];
-				Cmd_ExecuteString (va("gh %s %c%i", killer, operator, health2));
+				Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
 				if (operator == '-') {
 					SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1HK69 ^7kill ^1= ^7Random Health: ^1-%i\"", health2);
 				}
@@ -544,26 +545,26 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			// BLEED
 			else if (!Q_stricmp( wpn, "23:" )) {
 				char item = SV_GetRandomItem( clkiller );
-				Cmd_ExecuteString (va("gi %s %c", killer, item));
+				Cmd_ExecuteString (va("gi %i %c", skiller, item));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Bleeding ^7kill ^1= ^6%s\"", SV_NameItem(item));
 			}
 			// BOOT (KICKED)
 			else if (!Q_stricmp( wpn, "24:" )) {
 				int health2 = health[rand()%8];
-				Cmd_ExecuteString (va("gh %s +%i", killer, health2));
+				Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Boot ^7kill ^1= ^7Health: ^2+%i\"", health2);
 			}
 			// HE NADE
 			else if (!Q_stricmp( wpn, "25:" )) {
 				char item = SV_GetRandomItem( clkiller );
-				Cmd_ExecuteString (va("gi %s %c", killer, item));
+				Cmd_ExecuteString (va("gi %i %c", skiller, item));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1HE Grenade ^7kill ^1= ^6%s\"", SV_NameItem(item));
 			}
 			// SR8
 			else if (!Q_stricmp( wpn, "28:" )) {
 				char weapon = 'K';
 				int nades2 = nades[rand()%12];
-				Cmd_ExecuteString (va("gw %s %c +%i", killer, weapon, nades2));
+				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, nades2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Sr8 ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), nades2);
 			}
 			// AK103
@@ -574,7 +575,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			else if (!Q_stricmp( wpn, "35:" )) {
 				int health2 = health[rand()%8];
 				char operator = healthops[rand()%2];
-				Cmd_ExecuteString (va("gh %s %c%i", killer, operator, health2));
+				Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
 				if (operator == '-') {
 					SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^4NEGEV ^7kill ^1= ^7Random Health: ^1-%i\"", health2);
 				}
