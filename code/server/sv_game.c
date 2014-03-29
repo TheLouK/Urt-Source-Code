@@ -641,7 +641,12 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 
 	switch( args[0] ) {
 	case G_PRINT:
-		Check_Com_Printf( va( "%s", (const char*)VMA(1) ) );
+		if (sv_Guns->integer > 0) {
+			Check_Com_Printf( va( "%s", (const char*)VMA(1) ) );
+		}
+		else {
+			Com_Printf( "%s", (const char*)VMA(1) );
+		}
 		return 0;
 	case G_ERROR:
 		Com_Error( ERR_DROP, "%s", (const char*)VMA(1) );

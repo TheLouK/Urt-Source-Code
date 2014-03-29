@@ -441,6 +441,7 @@ extern	cvar_t	*sv_sayprefix;
 
 extern	cvar_t	*sv_SpecJoin;
 extern	cvar_t	*sv_HidePm;
+extern	cvar_t	*sv_Guns;
 extern cvar_t *sv_hideBotCmds;
 extern cvar_t *sv_logPath;
 
