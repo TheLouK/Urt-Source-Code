@@ -589,18 +589,15 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			// }
 			// CURB (GOOMBA)
 			else if (!Q_stricmp( wpn, "40:" )) {
-				// @FIXME: I think you can't give many weapons, weird..
-				// int i;
-				// for ( i = 0; i < 11; i++ ) {
-				// 	Cmd_ExecuteString (va("gw %s %c", killer, weaponforpistol[i]));
-				// 	if (i < 2) {
-				// 		Cmd_ExecuteString (va("gw %s %c", killer, pistols[i]));
-				// 	}
-				// }
-				char weapon = SV_GetRandomWeapon( clkiller );
-				Cmd_ExecuteString (va("gw %s %c +255 +255", killer, weapon));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Curb Stomp ^7kill ^1= %s ^4+255\"", SV_NameWeapon(weapon));
-				Cmd_ExecuteString (va("bigtext \"%s ^1MADE A CURB STOMP^8!^3! ^7he won %s ^7with ^4255 ^7ammo!!!\"", clkiller->name, SV_NameWeapon(weapon)));
+				int i;
+				for ( i = 0; i < 11; i++ ) {
+					Cmd_ExecuteString (va("gw %i %c 100 100", skiller, weaponforpistol[i]));
+					if (i < 2) {
+						Cmd_ExecuteString (va("gw %i %c 100 100", skiller, pistols[i]));
+					}
+				}
+				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Curb Stomp ^7kill ^1= ^5All Weapons with ^4100^7 Bullets\"");
+				Cmd_ExecuteString (va("bigtext \"%s made a ^6Curb Stomp^7!! he won ^5All Weapons ^7with ^4100 ^7bullets!!!\"", clkiller->name));
 			}
 		}
 	}
