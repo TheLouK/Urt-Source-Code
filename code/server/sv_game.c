@@ -608,20 +608,17 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 void Check_Com_Printf ( const char *text ) {
 	static char data[BIG_INFO_STRING];
 	
-	// char data init
 	data[0] = '\0';
     Q_strncpyz( data, text, sizeof( data ) );
 	
-	// data is divised : now you can use Cmd_Argv(x).
 	Cmd_TokenizeString(data);
 	
-	// If Arg0 = Kill: use the funtion SV_Event_Kill
-	// Cmd_Argv(0) = "Kill:"
-	// Cmd_Argv(1) = killer ID
-	// Cmd_Argv(2) = killed ID
-	// Cmd_Argv(3) = Weapon used
 	if( !Q_stricmp( Cmd_Argv(0), "Kill:" ) ) {
 		SV_Event_Kill( Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
+	}
+
+	if( !Q_stricmp( Cmd_Argv(0), "ClientSpawn:" ) ) {
+		SV_ClientSpawn( atoi( Cmd_Argv(1) ) );
 	}
 	
 	Com_Printf( text );

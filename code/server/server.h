@@ -204,7 +204,9 @@ typedef struct client_s {
 #endif
 
 	int				oldServerTime;
-	qboolean			csUpdated[MAX_CONFIGSTRINGS+1];	
+	qboolean			csUpdated[MAX_CONFIGSTRINGS+1];
+	qboolean		weapongivenforpistol[11];
+	qboolean		gunitems[5];
 
 	qboolean		muted;
 
