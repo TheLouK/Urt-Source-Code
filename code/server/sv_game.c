@@ -506,10 +506,12 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			}
 			// Spas
 			else if (!Q_stricmp( wpn, "16:" )) {
-				char weapon = weaponforpistol[rand() % 11];
+				int random = rand() % 11;
+				char weapon = weaponforpistol[random];
 				int amo2 = amo[rand()%11];
 				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, amo2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3Spas ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
+				clkiller->weapongivenforpistol[random] = qtrue;
 			}
 			// UMP45
 			else if (!Q_stricmp( wpn, "17:" )) {
