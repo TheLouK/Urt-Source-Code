@@ -668,7 +668,7 @@ void SV_FlagDropped( char *client ) {
 	int sclient = atoi( client );
 	clclient = &svs.clients[ atoi(client) ];
 
-	if (psclient->persistant[PERS_HEALTH] < 1) {
+	if (psclient->stats[STAT_HEALTH] < 1) {
 		return;
 	}
 
