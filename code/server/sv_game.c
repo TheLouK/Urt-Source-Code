@@ -292,10 +292,14 @@ static int	FloatAsInt( float f ) {
 	fi.f = f;
 	return fi.i;
 }
-
 char weaponforpistol[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
 char items[5] = { 'D', 'E', 'C', 'A', 'F' };
-char pistols[2] = { 'B', 'C' }; 
+char pistols[2] = { 'B', 'C' };
+
+int weaponsnum = sizeof(weaponforpistol);
+int itemsnum = sizeof(items);
+int pistolsnum = sizeof(pistols);
+
 int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 };
 int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
 int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
@@ -376,14 +380,14 @@ char SV_GetRandomWeapon( client_t *cl ) {
 
 	qtrues = 0;
 		
-	for ( i = 0; i < 11; i++ ) {
+	for ( i = 0; i < weaponsnum; i++ ) {
 		if ( cl->weapongivenforpistol[i] == qtrue ) {
 			qtrues++;
 		}
 	}
 		
-	if ( qtrues == 11 ) {
-		for ( i = 0; i < 11; i++ ) {
+	if ( qtrues == weaponsnum ) {
+		for ( i = 0; i < weaponsnum; i++ ) {
 			cl->weapongivenforpistol[i] = qfalse;
 		}
 	}
@@ -391,7 +395,7 @@ char SV_GetRandomWeapon( client_t *cl ) {
 	//Pistol Kill
     TRYAGAINPISTOL:
 		
-		random = rand() % 11;
+		random = rand() % weaponsnum;
 		// If you already have the weap do a new random
 		if ( cl->weapongivenforpistol[random] == qtrue ) {
 			goto TRYAGAINPISTOL;
@@ -411,14 +415,14 @@ char SV_GetRandomItem( client_t *cl ) {
 
 	qtrues = 0;
 		
-	for ( i = 0; i < 5; i++ ) {
+	for ( i = 0; i < itemsnum; i++ ) {
 		if ( cl->gunitems[i] == qtrue ) {
 			qtrues++;
 		}
 	}
 		
-	if ( qtrues == 5 ) {
-		for ( i = 0; i < 5; i++ ) {
+	if ( qtrues == itemsnum ) {
+		for ( i = 0; i < itemsnum; i++ ) {
 			cl->gunitems[i] = qfalse;
 		}
 	}
@@ -426,7 +430,7 @@ char SV_GetRandomItem( client_t *cl ) {
 	
     TRYAGAINITEM:
 
-		random = rand() % 5;
+		random = rand() % itemsnum;
 		// If you already have the item do a new item
 		if ( cl->gunitems[random] == qtrue ) {
 			goto TRYAGAINITEM;
@@ -447,9 +451,9 @@ void SV_ClientSpawn( int clID ) {
 	ps = SV_GameClientNum( clID );
 	
 	// IF client spawn all the "have weapon" qboolean are set to qfalse
-	for ( i = 0; i < 11; i++ ) {
+	for ( i = 0; i < weaponsnum; i++ ) {
 		cl->weapongivenforpistol[i] = qfalse;
-		if (i < 5) {
+		if (i < itemsnum) {
 			cl->gunitems[i] = qfalse;
 		}
 	}
@@ -506,7 +510,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			}
 			// Spas
 			else if (!Q_stricmp( wpn, "16:" )) {
-				int random = rand() % 11;
+				int random = rand() % weaponsnum;
 				char weapon = weaponforpistol[random];
 				int amo2 = amo[rand()%11];
 				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, amo2));
@@ -600,14 +604,17 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			// CURB (GOOMBA)
 			else if (!Q_stricmp( wpn, "40:" )) {
 				int i;
-				for ( i = 0; i < 11; i++ ) {
+				for ( i = 0; i < weaponsnum; i++ ) {
 					Cmd_ExecuteString (va("gw %i %c 100 100", skiller, weaponforpistol[i]));
-					if (i < 2) {
+					if (i < pistolsnum) {
 						Cmd_ExecuteString (va("gw %i %c 100 100", skiller, pistols[i]));
 					}
+					if (i < itemsnum) {
+						Cmd_ExecuteString (va("gi %i %c", skiller, items[i]));
+					}
 				}
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Curb Stomp ^7kill ^1= ^5All Weapons with ^4100^7 Bullets\"");
-				Cmd_ExecuteString (va("bigtext \"%s made a ^6Curb Stomp^7!! he won ^5All Weapons ^7with ^4100 ^7bullets!!!\"", clkiller->name));
+				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Curb Stomp ^7kill ^1= ^5All Weapons with ^4100^7 Bullets and all ^6Items\"");
+				Cmd_ExecuteString (va("bigtext \"%s made a ^6Curb Stomp^7!! he won ^5All Weapons ^7with ^4100 ^7bullets and all ^6Items\"", clkiller->name));
 			}
 		}
 	}
@@ -619,7 +626,7 @@ void SV_FlagTaken( char *client ) {
 
 	clclient = &svs.clients[ atoi(client) ];
 	int sclient = atoi( client );
-	char weapon = weaponforpistol[rand() % 11];
+	char weapon = weaponforpistol[rand() % weaponsnum];
 	int amo2 = amo[rand()%11];
 	Cmd_ExecuteString (va("gw %i +%c-@", sclient, weapon));
 	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Taken! You saved your weapons and won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
@@ -639,7 +646,7 @@ void SV_FlagCaptured( char *client ) {
 	// Comment this for the flagweapon stuff
 	Cmd_ExecuteString (va("gw %i -@", sclient));
 	int i;
-	for ( i = 0; i < 11; i++ ) {
+	for ( i = 0; i < weaponsnum; i++ ) {
 		if ( clclient->weapongivenforpistol[i] == qtrue ) {
 			Cmd_ExecuteString (va("gw %i %c", sclient, weaponforpistol[i]));
 		}
@@ -648,7 +655,7 @@ void SV_FlagCaptured( char *client ) {
 		// 	clclient->weapongivenforpistol[i] = qtrue;
 		// }
 	}
-	pistol = pistols[rand()%2];
+	pistol = pistols[rand()%pistolsnum];
 	Cmd_ExecuteString (va("gw %i %cA", sclient, pistol));
 	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
 
@@ -675,12 +682,12 @@ void SV_FlagDropped( char *client ) {
 
 	int i;
 	Cmd_ExecuteString (va("gw %i -@", sclient));
-	for ( i = 0; i < 11; i++ ) {
+	for ( i = 0; i < weaponsnum; i++ ) {
 		if ( clclient->weapongivenforpistol[i] == qtrue ) {
 			Cmd_ExecuteString (va("gw %i %c", sclient, weaponforpistol[i]));
 		}
 	}
-	pistol = pistols[rand()%2];
+	pistol = pistols[rand()%pistolsnum];
 	Cmd_ExecuteString (va("gw %i %cA", sclient, pistol));
 	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Dropped! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
 }
