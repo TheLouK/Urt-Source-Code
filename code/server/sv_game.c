@@ -301,6 +301,73 @@ int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
 int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
 char healthops[2] = { '+', '-' };
 
+char *SV_NameWeapon(weap2) {
+	char *weapon = " ";
+	if (weap2=='N') {
+		weapon="^6Sr8";
+	}
+	else if (weap2=='O') {
+		weapon="^5AK103";
+	}
+	else if (weap2=='Q') {
+		weapon="^4NEGEV";
+	}
+	else if (weap2=='F') {
+		weapon="^3UMP45";
+	}
+	else if (weap2=='I') {
+		weapon="^5G36";
+	}
+	else if (weap2=='G') {
+		weapon="^1HK69";
+	}
+	else if (weap2=='H') {
+		weapon="^5LR300";
+	}
+	else if (weap2=='D') {
+		weapon="^3Spas";
+	}
+	else if (weap2=='S') {
+		weapon="^5M4A1";
+	}
+	else if (weap2=='J') {
+		weapon="^6PSG1";
+	}
+	else if (weap2=='E') {
+		weapon="^3MP5K";
+	}
+	else if (weap2=='B') {
+		weapon="^2Beretta";
+	}
+	else if (weap2=='C') {
+		weapon="^2Desert Eagle";
+	}
+	else if (weap2=='K') {
+		weapon="^1HE Grenades";
+	}
+	return weapon;
+}
+
+char *SV_NameItem(item2) {
+	char *item = " ";
+	if (item2=='D') {
+		item="Silencer";
+	}
+	else if (item2=='E') {
+		item="Laser Sight";
+	}
+	else if (item2=='C') {
+		item="Ultra Medkit";
+	}
+	else if (item2=='A') {
+		item="Kevlar";
+	}
+	else if (item2=='F') {
+		item="Helmet";
+	}
+	return item;
+}
+
 char SV_GetRandomWeapon( client_t *cl ) {
 	char		weapon;
 	int			random;
@@ -369,73 +436,6 @@ char SV_GetRandomItem( client_t *cl ) {
 			cl->gunitems[random] = qfalse;
 			return item;
 		}
-}
-
-char *SV_NameWeapon(weap2) {
-	char *weapon = " ";
-	if (weap2=='N') {
-		weapon="^6Sr8";
-	}
-	else if (weap2=='O') {
-		weapon="^5AK103";
-	}
-	else if (weap2=='Q') {
-		weapon="^4NEGEV";
-	}
-	else if (weap2=='F') {
-		weapon="^3UMP45";
-	}
-	else if (weap2=='I') {
-		weapon="^5G36";
-	}
-	else if (weap2=='G') {
-		weapon="^1HK69";
-	}
-	else if (weap2=='H') {
-		weapon="^5LR300";
-	}
-	else if (weap2=='D') {
-		weapon="^3Spas";
-	}
-	else if (weap2=='S') {
-		weapon="^5M4A1";
-	}
-	else if (weap2=='J') {
-		weapon="^6PSG1";
-	}
-	else if (weap2=='E') {
-		weapon="^3MP5K";
-	}
-	else if (weap2=='B') {
-		weapon="^2Beretta";
-	}
-	else if (weap2=='C') {
-		weapon="^2Desert Eagle";
-	}
-	else if (weap2=='K') {
-		weapon="^1HE Grenades";
-	}
-	return weapon;
-}
-
-char *SV_NameItem(item2) {
-	char *item = " ";
-	if (item2=='D') {
-		item="Silencer";
-	}
-	else if (item2=='E') {
-		item="Laser Sight";
-	}
-	else if (item2=='C') {
-		item="Ultra Medkit";
-	}
-	else if (item2=='A') {
-		item="Kevlar";
-	}
-	else if (item2=='F') {
-		item="Helmet";
-	}
-	return item;
 }
 
 void SV_ClientSpawn( int clID ) {
