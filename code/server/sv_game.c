@@ -622,21 +622,67 @@ void SV_FlagTaken( char *client ) {
 	char weapon = weaponforpistol[rand() % 11];
 	int amo2 = amo[rand()%11];
 	Cmd_ExecuteString (va("gw %i +%c-@", sclient, weapon));
-	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Taken! You lost your weapons and won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
-	Cmd_ExecuteString (va("gw %i %c %i 0", sclient, weapon, amo2));
+	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Taken! You saved your weapons and won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
+	Cmd_ExecuteString (va("gw %i %c %i", sclient, weapon, amo2));
+	// Uncomment this to save the weapon given for take the flag
+	// clclient->flagweapon = weapon;
 }
 
 void SV_FlagCaptured( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
+	char 			pistol;
 
 	int sclient = atoi( client );
 	clclient = &svs.clients[ atoi(client) ];
-	char weapon = pistols[rand() % 2];
-	int amo2 = amo[rand()%11];
-	Cmd_ExecuteString (va("gw %i %c +%i", sclient, weapon, amo2));
-	Cmd_ExecuteString (va("gw %i +A", sclient));
-	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! You won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
+	
+	// Comment this for the flagweapon stuff
+	Cmd_ExecuteString (va("gw %i -@", sclient));
+	int i;
+	for ( i = 0; i < 11; i++ ) {
+		if ( clclient->weapongivenforpistol[i] == qtrue ) {
+			Cmd_ExecuteString (va("gw %i %c", sclient, weaponforpistol[i]));
+		}
+		// Uncomment this to give the weapon won when took the flag
+		// if (weaponforpistol[i] == clclient->flagweapon) {
+		// 	clclient->weapongivenforpistol[i] = qtrue;
+		// }
+	}
+	pistol = pistols[rand()%2];
+	Cmd_ExecuteString (va("gw %i %cA", sclient, pistol));
+	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
+
+	// Method to give a random pistol and random amo
+	// char weapon = pistols[rand() % 2];
+	// int amo2 = amo[rand()%11];
+	// Cmd_ExecuteString (va("gw %i %c +%i", sclient, weapon, amo2));
+	// Cmd_ExecuteString (va("gw %i +A", sclient));
+	// SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! You won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
+}
+
+void SV_FlagDropped( char *client ) {
+	client_t		*clclient;
+	playerState_t	*psclient;
+	char 			pistol;
+
+	int sclient = atoi( client );
+	clclient = &svs.clients[ atoi(client) ];
+
+	if (clclient->alive == qfalse) {
+		clclient->alive = qtrue;
+		return;
+	}
+
+	int i;
+	Cmd_ExecuteString (va("gw %i -@", sclient));
+	for ( i = 0; i < 11; i++ ) {
+		if ( clclient->weapongivenforpistol[i] == qtrue ) {
+			Cmd_ExecuteString (va("gw %i %c", sclient, weaponforpistol[i]));
+		}
+	}
+	pistol = pistols[rand()%2];
+	Cmd_ExecuteString (va("gw %i %cA", sclient, pistol));
+	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Dropped! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
 }
 
 void Check_Com_Printf ( const char *text ) {
@@ -658,6 +704,9 @@ void Check_Com_Printf ( const char *text ) {
 	}
 	else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "2:") ) {
 		SV_FlagCaptured( Cmd_Argv(1) );
+	}
+	else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "0:") ) {
+		SV_FlagDropped( Cmd_Argv(1) );
 	}
 	
 	Com_Printf( text );

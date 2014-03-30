@@ -208,6 +208,7 @@ typedef struct client_s {
 	qboolean		weapongivenforpistol[11];
 	qboolean		gunitems[5];
 	qboolean		alive = qtrue;
+	char 			flagweapon;
 
 	qboolean		muted;
 
