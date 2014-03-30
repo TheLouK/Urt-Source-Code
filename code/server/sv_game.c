@@ -470,14 +470,6 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	clkiller = &svs.clients[ atoi(killer) ];
 	pskilled = SV_GameClientNum( atoi(killed) );
 	pskiller = SV_GameClientNum( atoi(killer) );
-	
-	// turn state to dead
-	if (clkilled->alive == qtrue) {
-		clkilled->alive = qfalse;
-	}
-	if (clkiller->alive == qfalse && !Q_stricmp( wpn, "10:" )) {
-		clkiller->alive = qtrue;
-	}
 
 	SV_ClientSpawn( atoi( killed ) );
 	// If the killer is not the world
@@ -672,11 +664,11 @@ void SV_FlagDropped( char *client ) {
 	playerState_t	*psclient;
 	char 			pistol;
 
+	psclient = SV_GameClientNum( atoi(client) );
 	int sclient = atoi( client );
 	clclient = &svs.clients[ atoi(client) ];
 
-	if (clclient->alive == qfalse) {
-		clclient->alive = qtrue;
+	if (psclient->persistant[PERS_HEALTH] < 1) {
 		return;
 	}
 
