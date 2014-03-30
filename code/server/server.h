@@ -207,6 +207,7 @@ typedef struct client_s {
 	qboolean			csUpdated[MAX_CONFIGSTRINGS+1];
 	qboolean		weapongivenforpistol[11];
 	qboolean		gunitems[5];
+	qboolean		alive = qtrue;
 
 	qboolean		muted;
 

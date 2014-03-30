@@ -467,8 +467,16 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	pskilled = SV_GameClientNum( atoi(killed) );
 	pskiller = SV_GameClientNum( atoi(killer) );
 	
-	// If the killer is not the world
+	// turn state to dead
+	if (clkilled->alive == qtrue) {
+		clkilled->alive = qfalse;
+	}
+	if (clkiller->alive == qfalse && !Q_stricmp( wpn, "10:" )) {
+		clkiller->alive = qtrue;
+	}
+
 	SV_ClientSpawn( atoi( killed ) );
+	// If the killer is not the world
 	if ( atoi(killer) != -1 ) {
 	
 		// If the killer is not the killed (suicide)
