@@ -3,11 +3,11 @@ int weaponforpistol[12] = { 4, 5, 6, 7, 8, 9, 10, 14, 15, 17, 19, 22 };
 int items[5] = { 20, 21, 19, 17, 22 };
 int pistols[4] = { 3, 2, 20, 21 };
 
-// [Guns] Amo, Nades & Health variables
 int weaponsnum = sizeof(weaponforpistol);
 int itemsnum = sizeof(items);
 int pistolsnum = sizeof(pistols);
 
+// [Guns] Amo, Nades & Health variables
 int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 };
 int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
 int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
@@ -27,56 +27,41 @@ Returns Weapon name
 */
 char *SV_NameWeapon( int weap2 ) {
     char *weapon = " ";
-    if (weap2==14) {
-        weapon="^6Sr8";
-    }
-    else if (weap2==15) {
-        weapon="^5AK103";
-    }
-    else if (weap2==17) {
-        weapon="^4NEGEV";
-    }
-    else if (weap2==6) {
-        weapon="^3UMP45";
-    }
-    else if (weap2==9) {
-        weapon="^5G36";
-    }
-    else if (weap2==7) {
-        weapon="^1HK69";
-    }
-    else if (weap2==8) {
-        weapon="^5LR300";
-    }
-    else if (weap2==4) {
-        weapon="^3Spas";
-    }
-    else if (weap2==19) {
-        weapon="^5M4A1";
-    }
-    else if (weap2==10) {
-        weapon="^6PSG1";
-    }
-    else if (weap2==5) {
-        weapon="^3MAC-11";
-    }
-    else if (weap2==22) {
-        weapon="^3MP5K";
-    }
-    else if (weap2==2) {
-        weapon="^2Beretta";
-    }
-    else if (weap2==3) {
-        weapon="^2Desert Eagle";
-    }
-    else if (weap2==20) {
-        weapon="^2Glock 18";
-    }
-    else if (weap2==21) {
-        weapon="^2Colt 1911";
-    }
-    else if (weap2==11) {
-        weapon="^1HE Grenades";
+    switch ( weap ) {
+        case 14:
+            weapon = "^6Sr8";
+        case 15:
+            weapon = "^5AK103";
+        case 17:
+            weapon = "^4NEGEV";
+        case 6:
+            weapon = "^3UMP45";
+        case 9:
+            weapon = "^5G36";
+        case 7:
+            weapon = "^1HK69";
+        case 8:
+            weapon = "^5LR300";
+        case 4:
+            weapon = "^3Spas";
+        case 19:
+            weapon = "^5M4A1";
+        case 10:
+            weapon = "^6PSG1";
+        case 5:
+            weapon = "^3MAC-11";
+        case 22:
+            weapon = "^3MP5K";
+        case 2:
+            weapon = "^2Beretta";
+        case 3:
+            weapon = "^2Desert Eagle";
+        case 20:
+            weapon = "^2Glock 18";
+        case 21:
+            weapon = "^2Colt 1911";
+        case 11:
+            weapon = "^1HE Grenades";
     }
     return weapon;
 }
@@ -91,20 +76,18 @@ Returns Item name
 */
 char *SV_NameItem( int item2 ) {
     char *item = " ";
-    if (item2==20) {
-        item="Silencer";
-    }
-    else if (item2==21) {
-        item="Laser Sight";
-    }
-    else if (item2==19) {
-        item="Ultra Medkit";
-    }
-    else if (item2==17) {
-        item="Vest";
-    }
-    else if (item2==22) {
-        item="Helmet";
+
+    switch ( item2 ) {
+        case 20:
+            item = "Silencer";
+        case 21:
+            item = "Laser Sight";
+        case 19:
+            item = "Ultra Medkit";
+        case 17:
+            item = "Vest";
+        case 22:
+            item = "Helmet";
     }
     return item;
 }
