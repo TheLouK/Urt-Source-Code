@@ -292,6 +292,8 @@ static int	FloatAsInt( float f ) {
 	fi.f = f;
 	return fi.i;
 }
+
+// [Guns] Weapons & Items variables
 char weaponforpistol[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
 char items[5] = { 'D', 'E', 'C', 'A', 'F' };
 char pistols[2] = { 'B', 'C' };
@@ -300,11 +302,25 @@ int weaponsnum = sizeof(weaponforpistol);
 int itemsnum = sizeof(items);
 int pistolsnum = sizeof(pistols);
 
+// [Guns] Amo, Nades & Health variables
 int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 };
 int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
 int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
 char healthops[2] = { '+', '-' };
 
+int amonum = sizeof(amo);
+int nadesnum = sizeof(nades);
+int healthnum = sizeof(health);
+
+
+/*
+===============
+[Guns]
+SV_NameWeapon
+
+Returns Weapon name
+===============
+*/
 char *SV_NameWeapon(weap2) {
 	char *weapon = " ";
 	if (weap2=='N') {
@@ -352,6 +368,14 @@ char *SV_NameWeapon(weap2) {
 	return weapon;
 }
 
+/*
+===============
+[Guns]
+SV_NameItem
+
+Returns Item name
+===============
+*/
 char *SV_NameItem(item2) {
 	char *item = " ";
 	if (item2=='D') {
@@ -372,6 +396,15 @@ char *SV_NameItem(item2) {
 	return item;
 }
 
+/*
+===============
+[Guns]
+SV_GetRandomWeapon
+
+Returns a random weapon (that the client don't have)
+@FIXME: We should improve this by checking player's current weapons
+===============
+*/
 char SV_GetRandomWeapon( client_t *cl ) {
 	char		weapon;
 	int			random;
@@ -407,6 +440,15 @@ char SV_GetRandomWeapon( client_t *cl ) {
 		}
 }
 
+/*
+===============
+[Guns]
+SV_GetRandomItem
+
+Returns a random item (that the client don't have)
+@FIXME: We should improve this by checking player's current items
+===============
+*/
 char SV_GetRandomItem( client_t *cl ) {
 	char		item;
 	int			random;
@@ -442,6 +484,15 @@ char SV_GetRandomItem( client_t *cl ) {
 		}
 }
 
+/*
+===============
+[Guns]
+SV_ClientSpawn
+
+Set all weapons and items to qfalse (start guns) when the client spawns
+@FIXME: We should remove this method when checking player's current weapons
+===============
+*/
 void SV_ClientSpawn( int clID ) {
 	client_t		*cl;
 	playerState_t	*ps;
@@ -459,6 +510,15 @@ void SV_ClientSpawn( int clID ) {
 	}
 }
 
+/*
+===============
+[Guns]
+SV_Event_Kill
+
+Give [Guns] rewards to the killer
+@FIXME: Ideas for Automatics..?
+===============
+*/
 void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	client_t		*clkilled;
 	client_t		*clkiller;
@@ -612,6 +672,15 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	}
 }
 
+
+/*
+===============
+[Guns]
+SV_FlagTaken
+
+Event called when a client takes a flag
+===============
+*/
 void SV_FlagTaken( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
@@ -627,6 +696,15 @@ void SV_FlagTaken( char *client ) {
 	// clclient->flagweapon = weapon;
 }
 
+/*
+===============
+[Guns]
+SV_FlagCaptured
+
+Event called when a client capture a flag
+@FIXME: We should improve this by checking player's old weapons and amo!
+===============
+*/
 void SV_FlagCaptured( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
@@ -659,6 +737,16 @@ void SV_FlagCaptured( char *client ) {
 	// SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! You won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
 }
 
+
+/*
+===============
+[Guns]
+SV_FlagDropped
+
+Event called when a client drops a flag
+@FIXME: We should improve this by checking player's old weapons and amo!
+===============
+*/
 void SV_FlagDropped( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
@@ -684,6 +772,43 @@ void SV_FlagDropped( char *client ) {
 	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Dropped! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
 }
 
+/*
+===============
+[Guns]
+SV_Guns_EVS
+
+Handle Guns events
+===============
+*/
+void SV_Guns_EVS( char *args0, char *args1, char *args2, char *args3 ) {
+	// On player kill
+	if( !Q_stricmp( args0, "Kill:" ) ) {
+		SV_Event_Kill( args1, args2, args3 );
+	}
+	// On player spawn (UrT 4.2)
+	else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
+		SV_ClientSpawn( atoi( args1 ) );
+	}
+	// On Flag Taken
+	else if( (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_redflag")) || (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_blueflag")) ) {
+		SV_FlagTaken( args1 );
+	}
+	// On Flag Captured
+	else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "2:") ) {
+		SV_FlagCaptured( args1 );
+	}
+	else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "0:") ) {
+		SV_FlagDropped( args1 );
+	}
+}
+
+/*
+====================
+SV_Check_Com_Printf
+
+Filter QVM prints
+====================
+*/
 void Check_Com_Printf ( const char *text ) {
 	static char data[BIG_INFO_STRING];
 	
@@ -691,21 +816,9 @@ void Check_Com_Printf ( const char *text ) {
     Q_strncpyz( data, text, sizeof( data ) );
 	
 	Cmd_TokenizeString(data);
-	
-	if( !Q_stricmp( Cmd_Argv(0), "Kill:" ) ) {
-		SV_Event_Kill( Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
-	}
-	else if( !Q_stricmp( Cmd_Argv(0), "ClientSpawn:" ) ) {
-		SV_ClientSpawn( atoi( Cmd_Argv(1) ) );
-	}
-	else if( (!Q_stricmp( Cmd_Argv(0), "Item:" ) && !Q_stricmp( Cmd_Argv(2), "team_CTF_redflag")) || (!Q_stricmp( Cmd_Argv(0), "Item:" ) && !Q_stricmp( Cmd_Argv(2), "team_CTF_blueflag")) ) {
-		SV_FlagTaken( Cmd_Argv(1) );
-	}
-	else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "2:") ) {
-		SV_FlagCaptured( Cmd_Argv(1) );
-	}
-	else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "0:") ) {
-		SV_FlagDropped( Cmd_Argv(1) );
+
+	if (sv_Guns->integer > 0) {
+		SV_Guns_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) ) );
 	}
 	
 	Com_Printf( text );
@@ -728,12 +841,7 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 
 	switch( args[0] ) {
 	case G_PRINT:
-		if (sv_Guns->integer > 0) {
-			Check_Com_Printf( va( "%s", (const char*)VMA(1) ) );
-		}
-		else {
-			Com_Printf( "%s", (const char*)VMA(1) );
-		}
+		Check_Com_Printf( va( "%s", (const char*)VMA(1) ) );
 		return 0;
 	case G_ERROR:
 		Com_Error( ERR_DROP, "%s", (const char*)VMA(1) );

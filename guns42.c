@@ -1,7 +1,9 @@
+// [Guns] Weapons & Items variables
 int weaponforpistol[12] = { 4, 5, 6, 7, 8, 9, 10, 14, 15, 17, 19, 22 };
 int items[5] = { 20, 21, 19, 17, 22 };
 int pistols[4] = { 3, 2, 20, 21 };
 
+// [Guns] Amo, Nades & Health variables
 int weaponsnum = sizeof(weaponforpistol);
 int itemsnum = sizeof(items);
 int pistolsnum = sizeof(pistols);
@@ -11,6 +13,18 @@ int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
 int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
 char healthops[2] = { '+', '-' };
 
+int amonum = sizeof(amo);
+int nadesnum = sizeof(nades);
+int healthnum = sizeof(health);
+
+/*
+===============
+[Guns]
+SV_NameWeapon
+
+Returns Weapon name
+===============
+*/
 char *SV_NameWeapon( int weap2 ) {
     char *weapon = " ";
     if (weap2==14) {
@@ -67,6 +81,14 @@ char *SV_NameWeapon( int weap2 ) {
     return weapon;
 }
 
+/*
+===============
+[Guns]
+SV_NameItem
+
+Returns Item name
+===============
+*/
 char *SV_NameItem( int item2 ) {
     char *item = " ";
     if (item2==20) {
@@ -87,6 +109,15 @@ char *SV_NameItem( int item2 ) {
     return item;
 }
 
+/*
+===============
+[Guns]
+SV_GetRandomWeapon
+
+Returns a random weapon (that the client don't have)
+@FIXME: We should improve this by checking player's current weapons
+===============
+*/
 char SV_GetRandomWeapon( client_t *cl ) {
     int        weapon;
     int         random;
@@ -122,6 +153,15 @@ char SV_GetRandomWeapon( client_t *cl ) {
         }
 }
 
+/*
+===============
+[Guns]
+SV_GetRandomItem
+
+Returns a random item (that the client don't have)
+@FIXME: We should improve this by checking player's current items
+===============
+*/
 char SV_GetRandomItem( client_t *cl ) {
     int        item;
     int         random;
@@ -157,6 +197,15 @@ char SV_GetRandomItem( client_t *cl ) {
         }
 }
 
+/*
+===============
+[Guns]
+SV_ClientSpawn
+
+Set all weapons and items to qfalse (start guns) when the client spawns
+@FIXME: We should remove this method when checking player's current weapons
+===============
+*/
 void SV_ClientSpawn( int clID ) {
     client_t        *cl;
     playerState_t   *ps;
@@ -174,6 +223,15 @@ void SV_ClientSpawn( int clID ) {
     }
 }
 
+/*
+===============
+[Guns]
+SV_Event_Kill
+
+Give [Guns] rewards to the killer
+@FIXME: Ideas for Automatics..?
+===============
+*/
 void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
     client_t        *clkilled;
     client_t        *clkiller;
@@ -345,6 +403,14 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
     }
 }
 
+/*
+===============
+[Guns]
+SV_FlagTaken
+
+Event called when a client takes a flag
+===============
+*/
 void SV_FlagTaken( char *client ) {
     client_t        *clclient;
     playerState_t   *psclient;
@@ -360,6 +426,15 @@ void SV_FlagTaken( char *client ) {
     // clclient->flagweapon = weapon;
 }
 
+/*
+===============
+[Guns]
+SV_FlagCaptured
+
+Event called when a client capture a flag
+@FIXME: We should improve this by checking player's old weapons and amo!
+===============
+*/
 void SV_FlagCaptured( char *client ) {
     client_t        *clclient;
     playerState_t   *psclient;
@@ -392,6 +467,15 @@ void SV_FlagCaptured( char *client ) {
     // SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! You won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
 }
 
+/*
+===============
+[Guns]
+SV_FlagDropped
+
+Event called when a client drops a flag
+@FIXME: We should improve this by checking player's old weapons and amo!
+===============
+*/
 void SV_FlagDropped( char *client ) {
     client_t        *clclient;
     playerState_t   *psclient;
@@ -416,7 +500,43 @@ void SV_FlagDropped( char *client ) {
     Cmd_ExecuteString (va("gw %i %iA", sclient, pistol));
     SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Dropped! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
 }
+/*
+===============
+[Guns]
+SV_Guns_EVS
 
+Handle Guns events
+===============
+*/
+void SV_Guns_EVS( char *args0, char *args1, char *args2, char *args3 ) {
+    // On player kill
+    if( !Q_stricmp( args0, "Kill:" ) ) {
+        SV_Event_Kill( args1, args2, args3 );
+    }
+    // On player spawn (UrT 4.2)
+    else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
+        SV_ClientSpawn( atoi( args1 ) );
+    }
+    // On Flag Taken
+    else if( (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_redflag")) || (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_blueflag")) ) {
+        SV_FlagTaken( args1 );
+    }
+    // On Flag Captured
+    else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "2:") ) {
+        SV_FlagCaptured( args1 );
+    }
+    else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "0:") ) {
+        SV_FlagDropped( args1 );
+    }
+}
+
+/*
+====================
+SV_Check_Com_Printf
+
+Filter QVM prints
+====================
+*/
 void Check_Com_Printf ( const char *text ) {
     static char data[BIG_INFO_STRING];
     
@@ -424,21 +544,9 @@ void Check_Com_Printf ( const char *text ) {
     Q_strncpyz( data, text, sizeof( data ) );
     
     Cmd_TokenizeString(data);
-    
-    if( !Q_stricmp( Cmd_Argv(0), "Kill:" ) ) {
-        SV_Event_Kill( Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
-    }
-    else if( !Q_stricmp( Cmd_Argv(0), "ClientSpawn:" ) ) {
-        SV_ClientSpawn( atoi( Cmd_Argv(1) ) );
-    }
-    else if( (!Q_stricmp( Cmd_Argv(0), "Item:" ) && !Q_stricmp( Cmd_Argv(2), "team_CTF_redflag")) || (!Q_stricmp( Cmd_Argv(0), "Item:" ) && !Q_stricmp( Cmd_Argv(2), "team_CTF_blueflag")) ) {
-        SV_FlagTaken( Cmd_Argv(1) );
-    }
-    else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "2:") ) {
-        SV_FlagCaptured( Cmd_Argv(1) );
-    }
-    else if(!Q_stricmp( Cmd_Argv(0), "Flag:" ) && !Q_stricmp( Cmd_Argv(2), "0:") ) {
-        SV_FlagDropped( Cmd_Argv(1) );
+
+    if (sv_Guns->integer > 0) {
+        SV_Guns_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) ) );
     }
     
     Com_Printf( text );
