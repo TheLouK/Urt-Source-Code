@@ -252,7 +252,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
         if ( atoi(killer) != atoi(killed) ) {
             // Knife
             if (!Q_stricmp( wpn, "12:" )) {
-                int health2 = health[rand()%8];
+                int health2 = health[rand()%healthnum];
                 Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Knife ^7kill ^1= ^7Health: ^2+%i\"", health2);
             }
@@ -277,7 +277,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
             else if (!Q_stricmp( wpn, "16:" )) {
                 int random = rand() % weaponsnum;
                 int weapon = weaponforpistol[random];
-                int amo2 = amo[rand()%11];
+                int amo2 = amo[rand()%amonum];
                 Cmd_ExecuteString (va("gw %i %i +%i", skiller, weapon, amo2));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3Spas ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
                 clkiller->weapongivenforpistol[random] = qtrue;
@@ -305,13 +305,13 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
             // PSG1
             else if (!Q_stricmp( wpn, "21:" )) {
                 int weapon = 'K';
-                int nades2 = nades[rand()%12];
+                int nades2 = nades[rand()%nadesnum];
                 Cmd_ExecuteString (va("gw %i %i +%i", skiller, weapon, nades2));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6PSG1 ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), nades2);
             }
             // HK69
             else if ((!Q_stricmp( wpn, "22:" )) || (!Q_stricmp( wpn, "37:" ))) {
-                int health2 = health[rand()%8];
+                int health2 = health[rand()%healthnum];
                 char operator = healthops[rand()%2];
                 Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
                 if (operator == '-') {
@@ -329,7 +329,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
             }
             // BOOT (KICKED)
             else if (!Q_stricmp( wpn, "24:" )) {
-                int health2 = health[rand()%8];
+                int health2 = health[rand()%healthnum];
                 Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Boot ^7kill ^1= ^7Health: ^2+%i\"", health2);
             }
@@ -342,7 +342,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
             // SR8
             else if (!Q_stricmp( wpn, "28:" )) {
                 int weapon = 'K';
-                int nades2 = nades[rand()%12];
+                int nades2 = nades[rand()%nadesnum];
                 Cmd_ExecuteString (va("gw %i %i +%i", skiller, weapon, nades2));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Sr8 ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), nades2);
             }
@@ -352,7 +352,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
             // }
             // NEGEV
             else if (!Q_stricmp( wpn, "35:" )) {
-                int health2 = health[rand()%8];
+                int health2 = health[rand()%healthnum];
                 char operator = healthops[rand()%2];
                 Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
                 if (operator == '-') {
@@ -418,7 +418,7 @@ void SV_FlagTaken( char *client ) {
     clclient = &svs.clients[ atoi(client) ];
     int sclient = atoi( client );
     int weapon = weaponforpistol[rand() % weaponsnum];
-    int amo2 = amo[rand()%11];
+    int amo2 = amo[rand()%amonum];
     Cmd_ExecuteString (va("gw %i +%i-@", sclient, weapon));
     SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Taken! You saved your weapons and won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
     Cmd_ExecuteString (va("gw %i %i %i", sclient, weapon, amo2));
