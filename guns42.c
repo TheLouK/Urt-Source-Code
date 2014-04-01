@@ -239,13 +239,13 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
                 Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Knife ^7kill ^1= ^7Health: ^2+%i\"", health2);
             }
-            if (!Q_stricmp( wpn, "13:" )) {
+            else if (!Q_stricmp( wpn, "13:" )) {
                 int item = SV_GetRandomItem( clkiller );
                 Cmd_ExecuteString (va("gi %i %i", skiller, item));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Throwing Knife ^7kill ^1= ^6%s\"", SV_NameItem(item));
             }
             // Beretta
-            if (!Q_stricmp( wpn, "14:" )) {
+            else if (!Q_stricmp( wpn, "14:" )) {
                 int weapon = SV_GetRandomWeapon( clkiller );
                 Cmd_ExecuteString (va("gw %i %i", skiller, weapon));
                 SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^2Beretta ^7kill ^1= %s\"", SV_NameWeapon(weapon));
