@@ -818,7 +818,7 @@ void Check_Com_Printf ( const char *text ) {
 	Cmd_TokenizeString(data);
 
 	if (sv_Guns->integer > 0) {
-		SV_Guns_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) ) );
+		SV_Guns_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
 	}
 	
 	Com_Printf( text );
