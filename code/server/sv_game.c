@@ -487,13 +487,13 @@ char SV_GetRandomItem( client_t *cl ) {
 /*
 ===============
 [Guns]
-SV_ClientSpawn
+SV_ClientSpawn_Guns
 
 Set all weapons and items to qfalse (start guns) when the client spawns
 @FIXME: We should remove this method when checking player's current weapons
 ===============
 */
-void SV_ClientSpawn( int clID ) {
+void SV_ClientSpawn_Guns( int clID ) {
 	client_t		*cl;
 	playerState_t	*ps;
 	int				i;
@@ -513,13 +513,13 @@ void SV_ClientSpawn( int clID ) {
 /*
 ===============
 [Guns]
-SV_Event_Kill
+SV_Event_Kill_Guns
 
 Give [Guns] rewards to the killer
 @FIXME: Ideas for Automatics..?
 ===============
 */
-void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
+void SV_Event_Kill_Guns( char *killer, char *killed, char *wpn ) {
 	client_t		*clkilled;
 	client_t		*clkiller;
 	playerState_t	*pskilled;
@@ -531,13 +531,12 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	pskilled = SV_GameClientNum( atoi(killed) );
 	pskiller = SV_GameClientNum( atoi(killer) );
 
-	SV_ClientSpawn( atoi( killed ) );
+	SV_ClientSpawn_Guns( atoi( killed ) );
 	// If the killer is not the world
 	if ( atoi(killer) != -1 ) {
 	
 		// If the killer is not the killed (suicide)
 		if ( atoi(killer) != atoi(killed) ) {
-			SV_SendServerCommand(clkiller, "print \"^2%i + 50\"", clkiller->money);
 			clkiller->money += 50;
 			SV_SendServerCommand(clkiller, "print \"Your money: ^2+%i $\"", clkiller->money);
 			// Knife
@@ -679,12 +678,12 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 /*
 ===============
 [Guns]
-SV_FlagTaken
+SV_FlagTaken_Guns
 
 Event called when a client takes a flag
 ===============
 */
-void SV_FlagTaken( char *client ) {
+void SV_FlagTaken_Guns( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
 
@@ -702,13 +701,13 @@ void SV_FlagTaken( char *client ) {
 /*
 ===============
 [Guns]
-SV_FlagCaptured
+SV_FlagCaptured_Guns
 
 Event called when a client capture a flag
 @FIXME: We should improve this by checking player's old weapons and amo!
 ===============
 */
-void SV_FlagCaptured( char *client ) {
+void SV_FlagCaptured_Guns( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
 	char 			pistol;
@@ -744,13 +743,13 @@ void SV_FlagCaptured( char *client ) {
 /*
 ===============
 [Guns]
-SV_FlagDropped
+SV_FlagDropped_Guns
 
 Event called when a client drops a flag
 @FIXME: We should improve this by checking player's old weapons and amo!
 ===============
 */
-void SV_FlagDropped( char *client ) {
+void SV_FlagDropped_Guns( char *client ) {
 	client_t		*clclient;
 	playerState_t	*psclient;
 	char 			pistol;
@@ -786,22 +785,22 @@ Handle Guns events
 void SV_Guns_EVS( char *args0, char *args1, char *args2, char *args3 ) {
 	// On player kill
 	if( !Q_stricmp( args0, "Kill:" ) ) {
-		SV_Event_Kill( args1, args2, args3 );
+		SV_Event_Kill_Guns( args1, args2, args3 );
 	}
 	// On player spawn (UrT 4.2)
 	else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
-		SV_ClientSpawn( atoi( args1 ) );
+		SV_ClientSpawn_Guns( atoi( args1 ) );
 	}
 	// On Flag Taken
 	else if( (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_redflag")) || (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_blueflag")) ) {
-		SV_FlagTaken( args1 );
+		SV_FlagTaken_Guns( args1 );
 	}
 	// On Flag Captured
 	else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "2:") ) {
-		SV_FlagCaptured( args1 );
+		SV_FlagCaptured_Guns( args1 );
 	}
 	else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "0:") ) {
-		SV_FlagDropped( args1 );
+		SV_FlagDropped_Guns( args1 );
 	}
 }
 
