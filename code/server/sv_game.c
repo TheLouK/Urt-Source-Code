@@ -868,16 +868,10 @@ Give money to the killer for the kill
 ===============
 */
 void SV_Event_Kill_Money( char *killer, char *killed, char *wpn ) {
-	client_t		*clkilled;
 	client_t		*clkiller;
-	playerState_t	*pskilled;
-	playerState_t	*pskiller;
 
 	int skiller = atoi( killer );
-	clkilled = &svs.clients[ atoi(killed) ];
 	clkiller = &svs.clients[ atoi(killer) ];
-	pskilled = SV_GameClientNum( atoi(killed) );
-	pskiller = SV_GameClientNum( atoi(killer) );
 
 	if ( atoi(killer) != -1 ) {
 	
@@ -903,9 +897,9 @@ void SV_Money_EVS( char *args0, char *args1, char *args2, char *args3 ) {
 		SV_Event_Kill_Money( args1, args2, args3 );
 	}
 	// On player spawn (UrT 4.2)
-	else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
-		SV_ClientSpawn_Money( atoi( args1 ) );
-	}
+	// else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
+	// 	SV_ClientSpawn_Money( atoi( args1 ) );
+	// }
 }
 
 /*
