@@ -2765,13 +2765,16 @@ void SV_BuyWeapon( int sclient, int money, char key, char *name, int price) {
 
 	clclient = &svs.clients[ sclient ];
 	if (price > money) {
-		SV_SendServerCommand(clclient, "print \"You don't have enough money to buy %s\"", name);
+		SV_SendServerCommand(clclient, "chat \"^7[^2Money^7] You don't have enough money to buy %s\"", name);
 	}
 	else {
 		Cmd_ExecuteString (va("gw %i %c", sclient, key));
-		SV_SendServerCommand(clclient, "print \"You bought %s\"", name);
+		SV_SendServerCommand(clclient, "chat \"^7[^2Money^7] You bought %s\"", name);
 		clclient->money -= price;
-		SV_SendServerCommand(clclient, "print \"Your money: ^2%i $\"", clclient->money);
+		SV_SendServerCommand(clclient, "chat \"^7[^2Money^7] Your money: ^2%i $\"", clclient->money);
+	}
+}
+
 void SV_BuyWeaponAmount( int sclient, int money, char key, char *name, int price, int amount) {
 	client_t		*clclient;
 
