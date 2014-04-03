@@ -355,7 +355,6 @@ typedef struct
         int money;
 } userMoney_t;
 
-
 #define SERVER_MAXBANS	1024
 #define SERVER_BANFILE	"serverbans.dat"
 // Structure for managing bans
@@ -571,6 +570,7 @@ void SV_WriteDownloadToClient( client_t *cl , msg_t *msg );
 void SV_WriteVoipToClient( client_t *cl, msg_t *msg );
 #endif
 
+void SV_RconBuy_f (client_t *cl, char *wpn, char *status);
 void SV_ReadUserLocations(void);
 void SV_WriteUserLocations(void);
 

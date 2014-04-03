@@ -2940,6 +2940,23 @@ void SV_BuySomething( int sclient, char *wpn, int amount ) {
 	}
 }
 
+void SV_RconBuy_f ( client_t *cl, char *wpn, char *status ) {
+
+	int sclient = (int)(cl - svs.clients);
+
+	if (!Q_stricmp( wpn, "?" )) {
+		SV_SendServerCommand(cl, "print \"^7[^2Money^7] Invalid syntax, try again.\"");
+		return;
+	}
+	if (!Q_stricmp( status, "?" ) ) {
+		SV_BuySomething(sclient, wpn, 0);
+	}
+	else {
+		int amount = atoi(status);
+		SV_BuySomething(sclient, wpn, amount);
+	}
+}
+
 void SV_Buy_f ( client_t *cl ) {
 	int money = cl->money;
 	char *wpn;
@@ -2951,7 +2968,7 @@ void SV_Buy_f ( client_t *cl ) {
 	status = Cmd_Argv(2);
 
 	if (!Q_stricmp( wpn, "?" )) {
-		SV_SendServerCommand(cl, "print \"Invalid syntax, try again.\"");
+		SV_SendServerCommand(cl, "print \"^7[^2Money^7] Invalid syntax, try again.\"");
 		return;
 	}
 	if (!Q_stricmp( status, "?" ) ) {

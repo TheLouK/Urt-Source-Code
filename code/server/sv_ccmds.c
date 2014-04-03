@@ -1444,6 +1444,42 @@ static void SV_Spoof_f(void)
 }
 
 /*
+==========
+[Money]
+SV_SuBuy_f
+
+Send money as a specific client
+==========
+*/
+
+void SV_SuBuy_f(void) {
+	client_t *cl;
+	char *wpn = Cmd_Argv(2);
+	char *status = Cmd_Argv(3);
+        
+    // make sure server is running
+    if (!com_sv_running->integer)
+    {
+        Com_Printf("Server is not running.\n");
+        return;
+    }
+
+    cl = SV_GetPlayerByHandle();
+
+    if (!cl) {
+        return;
+    }
+    else {
+    	if (strlen(wpn) == 0) {
+			SV_SendServerCommand(cl, "chat \"^7[^2Money^7] Buy What?\"");
+		}
+		else {
+			SV_RconBuy_f(cl, wpn, status);
+		}
+    }
+}
+
+/*
 ==================
 SV_CrashPlayer_f
 ==================
@@ -1933,6 +1969,7 @@ void SV_AddOperatorCommands( void ) {
 	Cmd_AddCommand ("kick", SV_Kick_f);
         Cmd_AddCommand ("spoof", SV_Spoof_f);
         Cmd_AddCommand ("spf", SV_Spoof_f);
+        Cmd_AddCommand ("subuy", SV_SuBuy_f);
         Cmd_AddCommand ("crashplayer", SV_CrashPlayer_f);
         Cmd_AddCommand ("crash", SV_CrashPlayer_f);
         Cmd_AddCommand ("killplayer", SV_KillPlayer_f);
