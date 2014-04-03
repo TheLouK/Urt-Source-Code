@@ -209,6 +209,7 @@ typedef struct client_s {
 	qboolean		gunitems[5];
 	// Change char to int if UrT 4.2
 	char 			flagweapon;
+	int				money;
 
 	qboolean		muted;
 
@@ -346,6 +347,13 @@ typedef struct
         char guid[MAX_CVAR_VALUE_STRING];
         vec3_t pos;
 } userLoc_t;
+
+// [Money] struct for client
+typedef struct
+{
+        char guid[MAX_CVAR_VALUE_STRING];
+        int money;
+} userMoney_t;
 
 
 #define SERVER_MAXBANS	1024

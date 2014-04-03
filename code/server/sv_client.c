@@ -2706,6 +2706,59 @@ static void SV_Voip_f( client_t *cl ) {
 	}
 }
 #endif
+typedef struct {
+	char key;
+	char *name;
+	int price;
+} Weapon;
+Weapon sr8 = {'N', "^6Sr8^7", 100};
+Weapon ak = {'O', "^5AK103 7.62mm^7", 150};
+Weapon negev = {'Q', "^4IMI Negev^7", 100};
+Weapon ump = {'F', "^3HK UMP45^7", 80};
+Weapon g36 = {'I', "^5HK G36^7", 150};
+Weapon hk = {'G', "^1HK69 40mm^7", 150};
+Weapon lr = {'H', "^5ZM LR300^7", 125};
+Weapon spas = {'D', "^3Franchi SPAS12^7", 200};
+Weapon m4 = {'S', "^5Colt M4A1", 125};
+Weapon psg = {'J', "^6HK PSG1^7", 100};
+Weapon mp5 = {'E', "^3HK MP5K^7", 80};
+Weapon beretta = {'B', "^2Beretta^7", 50};
+Weapon desert = {'C', "^2Desert Eagle^7", 50};
+Weapon he = {'K', "^1HE Grenade^7", 30};
+Weapon smoke = {'M', "^1Smoke Grenade^7", 20};
+Weapon flash = {'L', "^1Flash Grenade^7", 100};
+Weapon knife = {'A', "^1Knife^7", 10};
+
+// Weapon weapons[17] = { sr8, ak, negev, ump, g36, hk, lr, spas, m4, psg, mp5, beretta, desert, he, smoke, flash, knife };
+// int weaponsnum = sizeof(weapons);
+
+typedef struct {
+	char key;
+	char *name;
+	int price;
+} Item;
+Item kevlar = {'A', "Kevlar Vest", 70};
+Item helmet = {'F', "Helmet", 60};
+Item laser = {'E', "Laser Sight", 50};
+Item silencer = {'D', "Silencer", 30};
+Item medkit = {'C', "Medkit", 50};
+Item tacs = {'B', "TacGoggles", 200};
+
+// Item items[6] = { kevlar, helmet, laser, silencer, medkit, tacs };
+// int itemsnum = sizeof(items);
+
+typedef struct {
+	char *name;
+	int price;
+} Other;
+Other tp = {"Teleport", 100};
+Other inv = {"Invisible", 1000};
+Other god = {"GoD", 1500};
+Other kill = {"Kill", 200};
+Other health = {"Health", 100};
+
+// Other others[5] = { tp, inv, god, kill, health };
+// int othersnum = sizeof(others);
 
 /*
 ====================
