@@ -807,6 +807,51 @@ void SV_Guns_EVS( char *args0, char *args1, char *args2, char *args3 ) {
 
 /*
 ====================
+[Money]
+SV_StartUserMoney
+
+Set user's money at start, called at "ClientConnect:"
+@Fixme: We need to read user's money from a file (to make money permanent)
+====================
+*/
+void SV_StartUserMoney ( char *client ) {
+	client_t		*cl;
+	cl = &svs.clients[ atoi(client) ];
+	int money = cl->money;
+	
+	/*
+	====================
+	Here the method to read money from usermoney.dat
+
+	After we find the money for the cl_guid:
+	cl->money = "money inside the file";
+	====================
+	*/
+}
+
+/*
+====================
+[Money]
+SV_SaveUserMoney
+
+Update user's money, called at "ClientDisconnect:"
+@Fixme: We need to save user's money in the usermoney.dat
+====================
+*/
+void SV_SaveUserMoney ( char *client ) {
+	client_t		*cl;
+	cl = &svs.clients[ atoi(client) ];
+	int money = cl->money;
+	
+	/*
+	====================
+	Here the method to read money from usermoney.dat
+	====================
+	*/
+}
+
+/*
+====================
 SV_Check_Com_Printf
 
 Filter QVM prints
