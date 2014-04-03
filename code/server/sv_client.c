@@ -2760,6 +2760,178 @@ Other health = {"Health", 100};
 // Other others[5] = { tp, inv, god, kill, health };
 // int othersnum = sizeof(others);
 
+void SV_BuyWeapon( int sclient, int money, char key, char *name, int price) {
+	client_t		*clclient;
+
+	clclient = &svs.clients[ sclient ];
+	if (price > money) {
+		SV_SendServerCommand(clclient, "print \"You don't have enough money to buy %s\"", name);
+	}
+	else {
+		Cmd_ExecuteString (va("gw %i %c", sclient, key));
+		SV_SendServerCommand(clclient, "print \"You bought %s\"", name);
+		clclient->money -= price;
+		SV_SendServerCommand(clclient, "print \"Your money: ^2%i $\"", clclient->money);
+	}
+}
+
+void SV_BuySomething( int sclient, char *wpn, int amount ) {
+	client_t		*clclient;
+	char			key;
+	char			*name;
+	int				price;
+
+	clclient = &svs.clients[ sclient ];
+	int money = clclient->money;
+	if ( !Q_stricmp( wpn, "SR8" ) || !Q_stricmp( wpn, "sr8" ) || !Q_stricmp( wpn, "Sr8" ) || !Q_stricmp( wpn, "sR8" ) ) {
+		key = sr8.key;
+		name = sr8.name;
+		price = sr8.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "AK" ) || !Q_stricmp( wpn, "ak" ) || !Q_stricmp( wpn, "ak103") || !Q_stricmp( wpn, "AK103") ) {
+		key = ak.key;
+		name = ak.name;
+		price = ak.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "NEGEV") || !Q_stricmp( wpn, "negev") || !Q_stricmp( wpn, "ngv") || !Q_stricmp( wpn, "NGV") ) {
+		key = negev.key;
+		name = negev.name;
+		price = negev.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "UMP") || !Q_stricmp( wpn, "ump") || !Q_stricmp( wpn, "UMP45") || !Q_stricmp( wpn, "ump45") ) {
+		key = ump.key;
+		name = ump.name;
+		price = ump.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "G36") || !Q_stricmp( wpn, "g36") ) {
+		key = g36.key;
+		name = g36.name;
+		price = g36.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "HK69") || !Q_stricmp( wpn, "hk69") || !Q_stricmp( wpn, "hk") || !Q_stricmp( wpn, "HK") ) {
+		key = hk.key;
+		name = hk.name;
+		price = hk.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "LR") || !Q_stricmp( wpn, "lr") || !Q_stricmp( wpn, "LR300") || !Q_stricmp( wpn, "lr300") ) {
+		key = lr.key;
+		name = lr.name;
+		price = lr.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "SPAS") || !Q_stricmp( wpn, "spas") || !Q_stricmp( wpn, "franchi") || !Q_stricmp( wpn, "FRANCHI") ) {
+		key = spas.key;
+		name = spas.name;
+		price = spas.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "M4") || !Q_stricmp( wpn, "m4") || !Q_stricmp( wpn, "m4a1") || !Q_stricmp( wpn, "M4A1") ) {
+		key = m4.key;
+		name = m4.name;
+		price = m4.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "PSG") || !Q_stricmp( wpn, "psg") || !Q_stricmp( wpn, "PSG1") || !Q_stricmp( wpn, "psg1") ) {
+		key = psg.key;
+		name = psg.name;
+		price = psg.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "MP5") || !Q_stricmp( wpn, "mp5") || !Q_stricmp( wpn, "MP5K") || !Q_stricmp( wpn, "mp5k") ) {
+		key = mp5.key;
+		name = mp5.name;
+		price = mp5.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "BERETTA") || !Q_stricmp( wpn, "beretta") || !Q_stricmp( wpn, "BE") || !Q_stricmp( wpn, "be") ) {
+		key = beretta.key;
+		name = beretta.name;
+		price = beretta.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "DE") || !Q_stricmp( wpn, "de") || !Q_stricmp( wpn, "desert") || !Q_stricmp( wpn, "DESERT") ) {
+		key = desert.key;
+		name = desert.name;
+		price = desert.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "HE") || !Q_stricmp( wpn, "he") || !Q_stricmp( wpn, "NADE") || !Q_stricmp( wpn, "nade") ) {
+		key = he.key;
+		name = he.name;
+		price = he.price;
+
+		if (amount > 0) {
+			// SV_BuyWeaponAmount(clclient, money, key, name, price, amount);
+		}
+		else {
+			SV_BuyWeapon(sclient, money, key, name, price);
+		}
+	}
+	else if ( !Q_stricmp( wpn, "SM") || !Q_stricmp( wpn, "sm") || !Q_stricmp( wpn, "SMOKE") || !Q_stricmp( wpn, "smoke") ) {
+		key = smoke.key;
+		name = smoke.name;
+		price = smoke.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "FL") || !Q_stricmp( wpn, "fl") || !Q_stricmp( wpn, "FLASH") || !Q_stricmp( wpn, "flash") ) {
+		key = flash.key;
+		name = flash.name;
+		price = flash.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+	else if ( !Q_stricmp( wpn, "KN") || !Q_stricmp( wpn, "kn") || !Q_stricmp( wpn, "KNIFE") || !Q_stricmp( wpn, "knife") ) {
+		key = flash.key;
+		name = flash.name;
+		price = flash.price;
+
+		SV_BuyWeapon(sclient, money, key, name, price);
+	}
+}
+
+void SV_Buy_f ( client_t *cl ) {
+	int money = cl->money;
+	char *wpn;
+	char *status;
+
+	int sclient = (int)(cl - svs.clients);
+
+	wpn = Cmd_Argv(1);
+	status = Cmd_Argv(2);
+
+	if (!Q_stricmp( wpn, "?" )) {
+		SV_SendServerCommand(cl, "print \"Invalid syntax, try again.\"");
+		return;
+	}
+	if (!Q_stricmp( status, "?" ) ) {
+		SV_BuySomething(sclient, wpn, 0);
+	}
+	else {
+		int amount = atoi(status);
+		SV_BuySomething(sclient, wpn, amount);
+	}
+}
+
 /*
 ====================
 SV_ReadUserLocations
@@ -3149,6 +3321,7 @@ static ucmd_t ucmds[] = {
     {"modlogin", SV_ModLogin_f},
     {"modlogout", SV_ModLogout_f},
     {"mod", SV_ModCommand_f},
+    {"buy", SV_Buy_f},
 
 #ifdef USE_VOIP
 	{"voip", SV_Voip_f},
