@@ -2772,6 +2772,19 @@ void SV_BuyWeapon( int sclient, int money, char key, char *name, int price) {
 		SV_SendServerCommand(clclient, "print \"You bought %s\"", name);
 		clclient->money -= price;
 		SV_SendServerCommand(clclient, "print \"Your money: ^2%i $\"", clclient->money);
+void SV_BuyWeaponAmount( int sclient, int money, char key, char *name, int price, int amount) {
+	client_t		*clclient;
+
+	clclient = &svs.clients[ sclient ];
+	price = price*amount;
+	if (price > money) {
+		SV_SendServerCommand(clclient, "chat \"^7[^2Money^7] You don't have enough money to buy %s ^4x%i\"", name, amount);
+	}
+	else {
+		Cmd_ExecuteString (va("gw %i %c +%i", sclient, key, amount));
+		SV_SendServerCommand(clclient, "chat \"^7[^2Money^7] You bought %s ^4x%i\"", name, amount);
+		clclient->money -= price;
+		SV_SendServerCommand(clclient, "chat \"^7[^2Money^7] Your money: ^2%i $\"", clclient->money);
 	}
 }
 
@@ -2880,7 +2893,7 @@ void SV_BuySomething( int sclient, char *wpn, int amount ) {
 		price = he.price;
 
 		if (amount > 0) {
-			// SV_BuyWeaponAmount(clclient, money, key, name, price, amount);
+			SV_BuyWeaponAmount(sclient, money, key, name, price, amount);
 		}
 		else {
 			SV_BuyWeapon(sclient, money, key, name, price);
@@ -2891,21 +2904,36 @@ void SV_BuySomething( int sclient, char *wpn, int amount ) {
 		name = smoke.name;
 		price = smoke.price;
 
-		SV_BuyWeapon(sclient, money, key, name, price);
+		if (amount > 0) {
+			SV_BuyWeaponAmount(sclient, money, key, name, price, amount);
+		}
+		else {
+			SV_BuyWeapon(sclient, money, key, name, price);
+		}
 	}
 	else if ( !Q_stricmp( wpn, "FL") || !Q_stricmp( wpn, "fl") || !Q_stricmp( wpn, "FLASH") || !Q_stricmp( wpn, "flash") ) {
 		key = flash.key;
 		name = flash.name;
 		price = flash.price;
 
-		SV_BuyWeapon(sclient, money, key, name, price);
+		if (amount > 0) {
+			SV_BuyWeaponAmount(sclient, money, key, name, price, amount);
+		}
+		else {
+			SV_BuyWeapon(sclient, money, key, name, price);
+		}
 	}
 	else if ( !Q_stricmp( wpn, "KN") || !Q_stricmp( wpn, "kn") || !Q_stricmp( wpn, "KNIFE") || !Q_stricmp( wpn, "knife") ) {
 		key = flash.key;
 		name = flash.name;
 		price = flash.price;
 
-		SV_BuyWeapon(sclient, money, key, name, price);
+		if (amount > 0) {
+			SV_BuyWeaponAmount(sclient, money, key, name, price, amount);
+		}
+		else {
+			SV_BuyWeapon(sclient, money, key, name, price);
+		}
 	}
 }
 
