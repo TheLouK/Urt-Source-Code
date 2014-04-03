@@ -305,12 +305,12 @@ int pistolsnum = sizeof(pistols);
 // [Guns] Amo, Nades & Health variables
 int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 };
 int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
-int health[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
+int healths[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
 char healthops[2] = { '+', '-' };
 
 int amonum = sizeof(amo);
 int nadesnum = sizeof(nades);
-int healthnum = sizeof(health);
+int healthnum = sizeof(healths);
 
 
 /*
@@ -537,9 +537,12 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 	
 		// If the killer is not the killed (suicide)
 		if ( atoi(killer) != atoi(killed) ) {
+			SV_SendServerCommand(clkiller, "print \"^2%i + 50\"", clkiller->money);
+			clkiller->money += 50;
+			SV_SendServerCommand(clkiller, "print \"Your money: ^2+%i $\"", clkiller->money);
 			// Knife
 			if (!Q_stricmp( wpn, "12:" )) {
-				int health2 = health[rand()%8];
+				int health2 = healths[rand()%8];
 				Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Knife ^7kill ^1= ^7Health: ^2+%i\"", health2);
 			}
@@ -598,7 +601,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			}
 			// HK69
 			else if ((!Q_stricmp( wpn, "22:" )) || (!Q_stricmp( wpn, "37:" ))) {
-				int health2 = health[rand()%8];
+				int health2 = healths[rand()%8];
 				char operator = healthops[rand()%2];
 				Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
 				if (operator == '-') {
@@ -616,7 +619,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			}
 			// BOOT (KICKED)
 			else if (!Q_stricmp( wpn, "24:" )) {
-				int health2 = health[rand()%8];
+				int health2 = healths[rand()%8];
 				Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
 				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Boot ^7kill ^1= ^7Health: ^2+%i\"", health2);
 			}
@@ -639,7 +642,7 @@ void SV_Event_Kill( char *killer, char *killed, char *wpn ) {
 			// }
 			// NEGEV
 			else if (!Q_stricmp( wpn, "35:" )) {
-				int health2 = health[rand()%8];
+				int health2 = healths[rand()%8];
 				char operator = healthops[rand()%2];
 				Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
 				if (operator == '-') {
