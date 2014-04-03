@@ -850,6 +850,18 @@ void SV_SaveUserMoney ( char *client ) {
 /*
 ===============
 [Money]
+SV_ClientSpawn_Money
+
+We will use this function for the autobuy stuff
+===============
+*/
+void SV_ClientSpawn_Money( int clID ) {
+	return;
+}
+
+/*
+===============
+[Money]
 SV_Event_Kill_Money
 
 Give money to the killer for the kill
