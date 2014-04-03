@@ -537,8 +537,6 @@ void SV_Event_Kill_Guns( char *killer, char *killed, char *wpn ) {
 	
 		// If the killer is not the killed (suicide)
 		if ( atoi(killer) != atoi(killed) ) {
-			clkiller->money += 50;
-			SV_SendServerCommand(clkiller, "print \"Your money: ^2+%i $\"", clkiller->money);
 			// Knife
 			if (!Q_stricmp( wpn, "12:" )) {
 				int health2 = healths[rand()%8];
@@ -847,6 +845,55 @@ void SV_SaveUserMoney ( char *client ) {
 	Here the method to read money from usermoney.dat
 	====================
 	*/
+}
+
+/*
+===============
+[Money]
+SV_Event_Kill_Money
+
+Give money to the killer for the kill
+===============
+*/
+void SV_Event_Kill_Money( char *killer, char *killed, char *wpn ) {
+	client_t		*clkilled;
+	client_t		*clkiller;
+	playerState_t	*pskilled;
+	playerState_t	*pskiller;
+
+	int skiller = atoi( killer );
+	clkilled = &svs.clients[ atoi(killed) ];
+	clkiller = &svs.clients[ atoi(killer) ];
+	pskilled = SV_GameClientNum( atoi(killed) );
+	pskiller = SV_GameClientNum( atoi(killer) );
+
+	if ( atoi(killer) != -1 ) {
+	
+		// If the killer is not the killed (suicide)
+		if ( atoi(killer) != atoi(killed) ) {
+			clkiller->money += 50; // 20 after we finish the "permanent save"
+			SV_SendServerCommand(clkiller, "chat \"^7[^2Money^7] Your money: ^2+%i $\"", clkiller->money);
+		}
+	}
+}
+
+/*
+===============
+[Money]
+SV_Money_EVS
+
+Handle Money events
+===============
+*/
+void SV_Money_EVS( char *args0, char *args1, char *args2, char *args3 ) {
+	// On player kill
+	if( !Q_stricmp( args0, "Kill:" ) ) {
+		SV_Event_Kill_Money( args1, args2, args3 );
+	}
+	// On player spawn (UrT 4.2)
+	else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
+		SV_ClientSpawn_Money( atoi( args1 ) );
+	}
 }
 
 /*
