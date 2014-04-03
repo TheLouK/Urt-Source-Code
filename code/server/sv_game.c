@@ -867,6 +867,9 @@ void Check_Com_Printf ( const char *text ) {
 	if (sv_Guns->integer > 0) {
 		SV_Guns_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
 	}
+	if (sv_Money->integer > 0) {
+		SV_Money_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
+	}
 	
 	Com_Printf( text );
 }

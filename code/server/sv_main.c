@@ -111,6 +111,7 @@ cvar_t	*sv_sayprefix;
 
 cvar_t	*sv_HidePm;
 cvar_t  *sv_Guns;
+cvar_t  *sv_Money;
 cvar_t *sv_hideBotCmds;
 cvar_t *sv_logPath;
 
