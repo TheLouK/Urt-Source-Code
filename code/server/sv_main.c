@@ -67,6 +67,7 @@ cvar_t  *sv_hideCmd;
 cvar_t  *sv_hideCmdList;
 cvar_t  *sv_noFallDamage;
 cvar_t  *sv_mod;
+cvar_t  *sv_gunsMod;
 cvar_t  *sv_free_stamina;
 cvar_t  *sv_free_walljumps;
 cvar_t  *sv_free_colorScore;

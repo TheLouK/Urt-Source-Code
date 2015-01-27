@@ -369,6 +369,7 @@ extern  cvar_t  *sv_hideCmd;
 extern  cvar_t  *sv_hideCmdList;
 extern  cvar_t  *sv_noFallDamage;
 extern  cvar_t  *sv_mod;
+extern	cvar_t	*sv_gunsMod;
 extern  cvar_t  *sv_free_stamina;
 extern  cvar_t  *sv_free_walljumps;
 extern  cvar_t  *sv_free_colorScore;

@@ -1053,6 +1053,7 @@ void SV_Init (void) {
 	sv_noFallDamage = Cvar_Get("noFallDamage", "0", CVAR_ARCHIVE);
     sv_disableRadio = Cvar_Get("noRadio", "0", CVAR_ARCHIVE);
     sv_mod = Cvar_Get("mod", "0", CVAR_ARCHIVE);
+    sv_gunsMod = Cvar_Get ("sv_gunsMod", "0", CVAR_ARCHIVE );
     
 	sv_free_stamina = Cvar_Get("free_stamina", "0", CVAR_ARCHIVE);
     sv_free_walljumps = Cvar_Get("free_walljumps", "0", CVAR_ARCHIVE);
