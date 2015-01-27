@@ -30,7 +30,6 @@ cvar_t *s_volume;
 cvar_t *s_musicVolume;
 cvar_t *s_doppler;
 cvar_t *s_backend;
-cvar_t *s_muteWhenMinimized;
 
 static soundInterface_t si;
 
@@ -61,14 +60,6 @@ static qboolean S_ValidSoundInterface( soundInterface_t *si )
 	if( !si->ClearSoundBuffer ) return qfalse;
 	if( !si->SoundInfo ) return qfalse;
 	if( !si->SoundList ) return qfalse;
-
-#ifdef USE_VOIP
-	if( !si->StartCapture ) return qfalse;
-	if( !si->AvailableCaptureSamples ) return qfalse;
-	if( !si->Capture ) return qfalse;
-	if( !si->StopCapture ) return qfalse;
-	if( !si->MasterGain ) return qfalse;
-#endif
 
 	return qtrue;
 }
@@ -126,11 +117,11 @@ void S_StopBackgroundTrack( void )
 S_RawSamples
 =================
 */
-void S_RawSamples (int stream, int samples, int rate, int width, int channels,
+void S_RawSamples (int samples, int rate, int width, int channels,
 		   const byte *data, float volume)
 {
 	if( si.RawSamples ) {
-		si.RawSamples( stream, samples, rate, width, channels, data, volume );
+		si.RawSamples( samples, rate, width, channels, data, volume );
 	}
 }
 
@@ -228,11 +219,6 @@ S_Update
 */
 void S_Update( void )
 {
-	if( s_muteWhenMinimized->integer && com_minimized->integer ) {
-		S_StopAllSounds( );
-		return;
-	}
-
 	if( si.Update ) {
 		si.Update( );
 	}
@@ -312,70 +298,6 @@ void S_SoundList( void )
 	}
 }
 
-
-#ifdef USE_VOIP
-/*
-=================
-S_StartCapture
-=================
-*/
-void S_StartCapture( void )
-{
-	if( si.StartCapture ) {
-		si.StartCapture( );
-	}
-}
-
-/*
-=================
-S_AvailableCaptureSamples
-=================
-*/
-int S_AvailableCaptureSamples( void )
-{
-	if( si.AvailableCaptureSamples ) {
-		return si.AvailableCaptureSamples( );
-	}
-	return 0;
-}
-
-/*
-=================
-S_Capture
-=================
-*/
-void S_Capture( int samples, byte *data )
-{
-	if( si.Capture ) {
-		si.Capture( samples, data );
-	}
-}
-
-/*
-=================
-S_StopCapture
-=================
-*/
-void S_StopCapture( void )
-{
-	if( si.StopCapture ) {
-		si.StopCapture( );
-	}
-}
-
-/*
-=================
-S_MasterGain
-=================
-*/
-void S_MasterGain( float gain )
-{
-	if( si.MasterGain ) {
-		si.MasterGain( gain );
-	}
-}
-#endif
-
 //=============================================================================
 
 /*
@@ -385,25 +307,26 @@ S_Play_f
 */
 void S_Play_f( void ) {
 	int 		i;
+	int			c;
 	sfxHandle_t	h;
-	char		name[256];
 
 	if( !si.RegisterSound || !si.StartLocalSound ) {
 		return;
 	}
 
-	i = 1;
-	while ( i<Cmd_Argc() ) {
-		if ( !Q_strrchr(Cmd_Argv(i), '.') ) {
-			Com_sprintf( name, sizeof(name), "%s.wav", Cmd_Argv(1) );
-		} else {
-			Q_strncpyz( name, Cmd_Argv(i), sizeof(name) );
-		}
-		h = si.RegisterSound( name, qfalse );
+	c = Cmd_Argc();
+
+	if( c < 2 ) {
+		Com_Printf ("Usage: play <sound filename> [sound filename] [sound filename] ...\n");
+		return;
+	}
+
+	for( i = 1; i < c; i++ ) {
+		h = si.RegisterSound( Cmd_Argv(i), qfalse );
+
 		if( h ) {
 			si.StartLocalSound( h, CHAN_LOCAL_SOUND );
 		}
-		i++;
 	}
 }
 
@@ -450,7 +373,6 @@ void S_Init( void )
 	s_musicVolume = Cvar_Get( "s_musicvolume", "0.25", CVAR_ARCHIVE );
 	s_doppler = Cvar_Get( "s_doppler", "1", CVAR_ARCHIVE );
 	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM );
-	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE );
 
 	cv = Cvar_Get( "s_initsound", "1", 0 );
 	if( !cv->integer ) {
@@ -465,7 +387,7 @@ void S_Init( void )
 		Cmd_AddCommand( "s_stop", S_StopAllSounds );
 		Cmd_AddCommand( "s_info", S_SoundInfo );
 
-		cv = Cvar_Get( "s_useOpenAL", "1", CVAR_ARCHIVE );
+		cv = Cvar_Get( "s_useOpenAL", "0", CVAR_ARCHIVE );
 		if( cv->integer ) {
 			//OpenAL
 			started = S_AL_Init( &si );

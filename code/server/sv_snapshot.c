@@ -133,30 +133,31 @@ static void SV_WriteSnapshotToClient( client_t *client, msg_t *msg ) {
 		// client is asking for a retransmit
 		oldframe = NULL;
 		lastframe = 0;
-        } else if (client->demo_recording && client->demo_deltas <= 0) {
-                // if we're recording this client, force full frames every now and then
-                oldframe = NULL;
-                lastframe = 0;
-                Com_DPrintf("Forced a full frame for %s\n", client->name);
-                // once we reach 1 full frame for every 1024 delta frames we stay there
-                // TODO: these numbers need to be tweaked properly, the current values
-                // just seem to work "fine" for all the tests we ran...
-                if (client->demo_backoff < 1024) {
-                        client->demo_backoff *= 2;
-                }
-                client->demo_deltas = client->demo_backoff;
 	} else if ( client->netchan.outgoingSequence - client->deltaMessage 
 		>= (PACKET_BACKUP - 3) ) {
 		// client hasn't gotten a good message through in a long time
 		Com_DPrintf ("%s: Delta request from out of date packet.\n", client->name);
 		oldframe = NULL;
 		lastframe = 0;
+	} else if (client->demo_recording && client->demo_deltas <= 0) {
+		// if we're recording this client, force full frames every now and then
+		oldframe = NULL;
+		lastframe = 0;
+		Com_DPrintf("Forced a full frame for %s\n", client->name);
+		// once we reach 1 full frame for every 1024 delta frames we stay there
+		// TODO: these numbers need to be tweaked properly, the current values
+		// just seem to work "fine" for all the tests we ran...
+		if (client->demo_backoff < 1024) {
+			client->demo_backoff *= 2;
+		}
+		client->demo_deltas = client->demo_backoff;
 	} else {
-        // count down delta frames to know when we need to send the next full frame
-                if (client->demo_recording) {
-                        Com_DPrintf("Counted a delta frame for %s\n", client->name);
-                        client->demo_deltas--;
-                }
+		// count down delta frames to know when we need to send the next full frame
+		if (client->demo_recording) {
+			Com_DPrintf("Counted a delta frame for %s\n", client->name);
+			client->demo_deltas--;
+		}
+		
 		// we have a valid snapshot to delta from
 		oldframe = &client->frames[ client->deltaMessage & PACKET_MASK ];
 		lastframe = client->netchan.outgoingSequence - client->deltaMessage;
@@ -168,13 +169,13 @@ static void SV_WriteSnapshotToClient( client_t *client, msg_t *msg ) {
 			lastframe = 0;
 		}
 	}
-        
-        // start recording only once there's a non-delta frame to start with
-        if (!oldframe && client->demo_recording && client->demo_waiting) {
-                client->demo_waiting = qfalse;
-                Com_DPrintf("Got non-delta frame, recording %s now\n", client->name);
-        }
 
+	// start recording only once there's a non-delta frame to start with
+	if (!oldframe && client->demo_recording && client->demo_waiting) {
+		client->demo_waiting = qfalse;
+		Com_DPrintf("Got non-delta frame, recording %s now\n", client->name);
+	}
+	
 	MSG_WriteByte (msg, svc_snapshot);
 
 	// NOTE, MRE: now sent at the start of every message from server to client
@@ -315,15 +316,14 @@ SV_AddEntitiesVisibleFromPoint
 */
 static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *frame, 
 									snapshotEntityNumbers_t *eNums, qboolean portal ) {
-	int		e, i;
-	sharedEntity_t *ent;
-	svEntity_t	*svEnt;
-	int		l;
-	int		clientarea, clientcluster;
-	int		leafnum;
-	int		c_fullsend;
-	byte	*clientpvs;
-	byte	*bitvector;
+	int		        e, i;
+	sharedEntity_t  *ent;
+	svEntity_t	    *svEnt;
+	int		        l;
+	int		        clientarea, clientcluster;
+	int		        leafnum;
+	byte	        *clientpvs;
+	byte	        *bitvector;
 
 	// during an error shutdown message we may need to transmit
 	// the shutdown message after the server has shutdown, so
@@ -340,8 +340,6 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 	frame->areabytes = CM_WriteAreaBits( frame->areabits, clientarea );
 
 	clientpvs = CM_ClusterPVS (clientcluster);
-
-	c_fullsend = 0;
 
 	for ( e = 0 ; e < sv.num_entities ; e++ ) {
 		ent = SV_GentityNum(e);
@@ -375,8 +373,8 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 		}
 		// entities can be flagged to be sent to a given mask of clients
 		if ( ent->r.svFlags & SVF_CLIENTMASK ) {
-			if (frame->ps.clientNum >= 64)
-				Com_Error( ERR_DROP, "SVF_CLIENTMASK: cientNum > 64\n" );
+			if (frame->ps.clientNum >= 32)
+				Com_Error( ERR_DROP, "SVF_CLIENTMASK: clientNum > 32\n" );
 			if (~ent->r.singleClient & (1 << frame->ps.clientNum))
 				continue;
 		}
@@ -581,7 +579,7 @@ static int SV_RateMsec( client_t *client, int messageSize ) {
 			rate = sv_minRate->integer;
 	}
 
-	rateMsec = ( messageSize + HEADER_RATE_BYTES ) * 1000 / rate * com_timescale->value;
+	rateMsec = ( messageSize + HEADER_RATE_BYTES ) * 1000 / ((int) (rate * com_timescale->value));
 
 	return rateMsec;
 }
@@ -595,12 +593,12 @@ Called by SV_SendClientSnapshot and SV_SendClientGameState
 */
 void SV_SendMessageToClient( msg_t *msg, client_t *client ) {
 	int			rateMsec;
-        
-    if (client->demo_recording && !client->demo_waiting) {
-                SVD_WriteDemoFile(client, msg);
-                Com_DPrintf("Wrote a frame for %s\n", client->name);
-        }
 
+	if (client->demo_recording && !client->demo_waiting) {
+		SVD_WriteDemoFile(client, msg);
+		Com_DPrintf("Wrote a frame for %s\n", client->name);
+	}
+	
 	// record information about the message
 	client->frames[client->netchan.outgoingSequence & PACKET_MASK].messageSize = msg->cursize;
 	client->frames[client->netchan.outgoingSequence & PACKET_MASK].messageSent = svs.time;
@@ -615,7 +613,7 @@ void SV_SendMessageToClient( msg_t *msg, client_t *client ) {
 	// TTimo - https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=491
 	// added sv_lanForceRate check
 	if ( client->netchan.remoteAddress.type == NA_LOOPBACK || (sv_lanForceRate->integer && Sys_IsLANAddress (client->netchan.remoteAddress)) ) {
-		client->nextSnapshotTime = svs.time + (1000.0 / sv_fps->integer * com_timescale->value);
+		client->nextSnapshotTime = svs.time + ((int) (1000.0 / sv_fps->integer * com_timescale->value));
 		return;
 	}
 	
@@ -630,7 +628,7 @@ void SV_SendMessageToClient( msg_t *msg, client_t *client ) {
 		client->rateDelayed = qtrue;
 	}
 
-	client->nextSnapshotTime = svs.time + rateMsec * com_timescale->value;
+	client->nextSnapshotTime = svs.time + ((int) (rateMsec * com_timescale->value));
 
 	// don't pile up empty snapshots while connecting
 	if ( client->state != CS_ACTIVE ) {
@@ -660,7 +658,7 @@ void SV_SendClientSnapshot( client_t *client ) {
 
 	// bots need to have their snapshots build, but
 	// the query them directly without needing to be sent
-	if ( client->gentity && client->gentity->r.svFlags & SVF_BOT ) {
+	if ( client->gentity && (client->gentity->r.svFlags & SVF_BOT) ) {
 		return;
 	}
 
@@ -680,10 +678,6 @@ void SV_SendClientSnapshot( client_t *client ) {
 
 	// Add any download data if the client is downloading
 	SV_WriteDownloadToClient( client, &msg );
-
-#ifdef USE_VOIP
-	SV_WriteVoipToClient( client, &msg );
-#endif
 
 	// check for overflow
 	if ( msg.overflowed ) {
@@ -725,6 +719,31 @@ void SV_SendClientMessages( void ) {
 
 		// generate and send a new message
 		SV_SendClientSnapshot( c );
+	}
+}
+
+
+void SV_CheckClientUserinfoTimer( void ) {
+	int			i;
+	client_t	*cl;
+	char bigbuffer[ MAX_INFO_STRING * 2];
+
+	for (i=0, cl = svs.clients ; i < sv_maxclients->integer ; i++, cl++) {
+		if (!cl->state) {
+			continue;		// not connected
+		}
+		if ( (sv_floodProtect->integer) &&  
+			(svs.time >= cl->nextReliableUserTime)
+			&& (cl->state >= CS_ACTIVE) &&
+			(cl->userinfobuffer[0]!=0) ) 
+		{
+			//We have something in the buffer
+			//and its time to process it
+			sprintf(bigbuffer,"userinfo \"%s\"",cl->userinfobuffer);
+			
+			Cmd_TokenizeString(bigbuffer);
+			SV_UpdateUserinfo_f(cl);
+		}
 	}
 }
 

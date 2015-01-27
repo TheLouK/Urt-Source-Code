@@ -47,7 +47,7 @@ vec4_t		colorLtGrey	= {0.75, 0.75, 0.75, 1};
 vec4_t		colorMdGrey	= {0.5, 0.5, 0.5, 1};
 vec4_t		colorDkGrey	= {0.25, 0.25, 0.25, 1};
 
-vec4_t	g_color_table[8] =
+vec4_t	g_color_table[10] =
 	{
 	{0.0, 0.0, 0.0, 1.0},
 	{1.0, 0.0, 0.0, 1.0},
@@ -57,6 +57,8 @@ vec4_t	g_color_table[8] =
 	{0.0, 1.0, 1.0, 1.0},
 	{1.0, 0.0, 1.0, 1.0},
 	{1.0, 1.0, 1.0, 1.0},
+	{0.88, 0.31, 0.13, 1.0},
+	{0.29, 0.30, 0.19, 1.0},
 	};
 
 
@@ -501,7 +503,10 @@ void VectorRotate( vec3_t in, vec3_t matrix[3], vec3_t out )
 */
 float Q_rsqrt( float number )
 {
-	floatint_t t;
+	union {
+		float f;
+		int i;
+	} t;
 	float x2, y;
 	const float threehalfs = 1.5F;
 
@@ -516,10 +521,9 @@ float Q_rsqrt( float number )
 }
 
 float Q_fabs( float f ) {
-	floatint_t fi;
-	fi.f = f;
-	fi.i &= 0x7FFFFFFF;
-	return fi.f;
+	int tmp = * ( int * ) &f;
+	tmp &= 0x7FFFFFFF;
+	return * ( float * ) &tmp;
 }
 #endif
 
@@ -1299,11 +1303,15 @@ Don't pass doubles to this
 */
 int Q_isnan( float x )
 {
-	floatint_t fi;
+	union
+	{
+		float f;
+		unsigned int i;
+	} t;
 
-	fi.f = x;
-	fi.ui &= 0x7FFFFFFF;
-	fi.ui = 0x7F800000 - fi.ui;
+	t.f = x;
+	t.i &= 0x7FFFFFFF;
+	t.i = 0x7F800000 - t.i;
 
-	return (int)( (unsigned int)fi.ui >> 31 );
+	return (int)( (unsigned int)t.i >> 31 );
 }

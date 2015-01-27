@@ -71,8 +71,9 @@ Con_ToggleConsole_f
 ================
 */
 void Con_ToggleConsole_f (void) {
-	// Can't toggle the console when it's the only thing available
-	if ( cls.state == CA_DISCONNECTED && Key_GetCatcher( ) == KEYCATCH_CONSOLE ) {
+	// closing a full screen console restarts the demo loop
+	if ( cls.state == CA_DISCONNECTED && cls.keyCatchers == KEYCATCH_CONSOLE ) {
+		CL_StartDemoLoop();
 		return;
 	}
 
@@ -80,7 +81,7 @@ void Con_ToggleConsole_f (void) {
 	g_consoleField.widthInChars = g_console_field_width;
 
 	Con_ClearNotify ();
-	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_CONSOLE );
+	cls.keyCatchers ^= KEYCATCH_CONSOLE;
 }
 
 /*
@@ -94,7 +95,7 @@ void Con_MessageMode_f (void) {
 	Field_Clear( &chatField );
 	chatField.widthInChars = 30;
 
-	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
+	cls.keyCatchers ^= KEYCATCH_MESSAGE;
 }
 
 /*
@@ -107,7 +108,7 @@ void Con_MessageMode2_f (void) {
 	chat_team = qtrue;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 25;
-	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
+	cls.keyCatchers ^= KEYCATCH_MESSAGE;
 }
 
 /*
@@ -124,7 +125,7 @@ void Con_MessageMode3_f (void) {
 	chat_team = qfalse;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 30;
-	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
+	cls.keyCatchers ^= KEYCATCH_MESSAGE;
 }
 
 /*
@@ -141,7 +142,7 @@ void Con_MessageMode4_f (void) {
 	chat_team = qfalse;
 	Field_Clear( &chatField );
 	chatField.widthInChars = 30;
-	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
+	cls.keyCatchers ^= KEYCATCH_MESSAGE;
 }
 
 /*
@@ -302,17 +303,6 @@ void Con_CheckResize (void)
 	con.display = con.current;
 }
 
-/*
-==================
-Cmd_CompleteTxtName
-==================
-*/
-void Cmd_CompleteTxtName( char *args, int argNum ) {
-	if( argNum == 2 ) {
-		Field_CompleteFilename( "", "txt", qfalse );
-	}
-}
-
 
 /*
 ================
@@ -340,7 +330,6 @@ void Con_Init (void) {
 	Cmd_AddCommand ("messagemode4", Con_MessageMode4_f);
 	Cmd_AddCommand ("clear", Con_Clear_f);
 	Cmd_AddCommand ("condump", Con_Dump_f);
-	Cmd_SetCommandCompletionFunc( "condump", Cmd_CompleteTxtName );
 }
 
 
@@ -489,7 +478,7 @@ Draw the editline after a ] prompt
 void Con_DrawInput (void) {
 	int		y;
 
-	if ( cls.state != CA_DISCONNECTED && !(Key_GetCatcher( ) & KEYCATCH_CONSOLE ) ) {
+	if ( cls.state != CA_DISCONNECTED && !(cls.keyCatchers & KEYCATCH_CONSOLE ) ) {
 		return;
 	}
 
@@ -500,7 +489,7 @@ void Con_DrawInput (void) {
 	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, ']' );
 
 	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH, y,
-		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue, qtrue );
+		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue );
 }
 
 
@@ -536,7 +525,7 @@ void Con_DrawNotify (void)
 			continue;
 		text = con.text + (i % con.totallines)*con.linewidth;
 
-		if (cl.snap.ps.pm_type != PM_INTERMISSION && Key_GetCatcher( ) & (KEYCATCH_UI | KEYCATCH_CGAME) ) {
+		if (cl.snap.ps.pm_type != PM_INTERMISSION && (cls.keyCatchers & (KEYCATCH_UI | KEYCATCH_CGAME)) ) {
 			continue;
 		}
 
@@ -556,26 +545,26 @@ void Con_DrawNotify (void)
 
 	re.SetColor( NULL );
 
-	if (Key_GetCatcher( ) & (KEYCATCH_UI | KEYCATCH_CGAME) ) {
+	if (cls.keyCatchers & (KEYCATCH_UI | KEYCATCH_CGAME) ) {
 		return;
 	}
 
 	// draw the chat line
-	if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE )
+	if ( cls.keyCatchers & KEYCATCH_MESSAGE )
 	{
 		if (chat_team)
 		{
-			SCR_DrawBigString (8, v, "say_team:", 1.0f, qfalse );
+			SCR_DrawBigString (8, v, "say_team:", 1.0f );
 			skip = 10;
 		}
 		else
 		{
-			SCR_DrawBigString (8, v, "say:", 1.0f, qfalse );
+			SCR_DrawBigString (8, v, "say:", 1.0f );
 			skip = 5;
 		}
 
 		Field_BigDraw( &chatField, skip * BIGCHAR_WIDTH, v,
-			SCREEN_WIDTH - ( skip + 1 ) * BIGCHAR_WIDTH, qtrue, qtrue );
+			SCREEN_WIDTH - ( skip + 1 ) * BIGCHAR_WIDTH, qtrue );
 
 		v += BIGCHAR_HEIGHT;
 	}
@@ -611,7 +600,7 @@ void Con_DrawSolidConsole( float frac ) {
 	SCR_AdjustFrom640( &con.xadjust, NULL, NULL, NULL );
 
 	// draw the background
-	y = frac * SCREEN_HEIGHT;
+	y = frac * SCREEN_HEIGHT - 2;
 	if ( y < 1 ) {
 		y = 0;
 	}
@@ -630,11 +619,14 @@ void Con_DrawSolidConsole( float frac ) {
 
 	re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
 
-	i = strlen( Q3_VERSION );
+	i = strlen( SVN_VERSION );
 
 	for (x=0 ; x<i ; x++) {
-		SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * SMALLCHAR_WIDTH,
-			lines - SMALLCHAR_HEIGHT, Q3_VERSION[x] );
+
+		SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x ) * SMALLCHAR_WIDTH, 
+
+			(lines-(SMALLCHAR_HEIGHT+SMALLCHAR_HEIGHT/2)), SVN_VERSION[x] );
+
 	}
 
 
@@ -707,7 +699,7 @@ void Con_DrawConsole( void ) {
 
 	// if disconnected, render console full screen
 	if ( cls.state == CA_DISCONNECTED ) {
-		if ( !( Key_GetCatcher( ) & (KEYCATCH_UI | KEYCATCH_CGAME)) ) {
+		if ( !( cls.keyCatchers & (KEYCATCH_UI | KEYCATCH_CGAME)) ) {
 			Con_DrawSolidConsole( 1.0 );
 			return;
 		}
@@ -734,7 +726,7 @@ Scroll it up or down
 */
 void Con_RunConsole (void) {
 	// decide on the destination height of the console
-	if ( Key_GetCatcher( ) & KEYCATCH_CONSOLE )
+	if ( cls.keyCatchers & KEYCATCH_CONSOLE )
 		con.finalFrac = 0.5;		// half screen
 	else
 		con.finalFrac = 0;				// none visible
@@ -789,7 +781,7 @@ void Con_Close( void ) {
 	}
 	Field_Clear( &g_consoleField );
 	Con_ClearNotify ();
-	Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_CONSOLE );
+	cls.keyCatchers &= ~KEYCATCH_CONSOLE;
 	con.finalFrac = 0;				// none visible
 	con.displayFrac = 0;
 }

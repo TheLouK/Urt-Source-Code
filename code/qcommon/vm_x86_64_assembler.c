@@ -231,7 +231,7 @@ static void hash_add_label(const char* label, unsigned address)
 {
 	struct hashentry* h;
 	unsigned i = hashkey(label, -1U);
-	i %= ARRAY_LEN(labelhash);
+	i %= sizeof(labelhash)/sizeof(labelhash[0]);
 	h = malloc(sizeof(struct hashentry));
 	h->label = strdup(label);
 	h->address = address;
@@ -243,7 +243,7 @@ static unsigned lookup_label(const char* label)
 {
 	struct hashentry* h;
 	unsigned i = hashkey(label, -1U);
-	i %= ARRAY_LEN(labelhash);
+	i %= sizeof(labelhash)/sizeof(labelhash[0]);
 	for(h = labelhash[i]; h; h = h->next )
 	{
 		if(!strcmp(h->label, label))
@@ -259,7 +259,7 @@ static void labelhash_free(void)
 	struct hashentry* h;
 	unsigned i;
 	unsigned z = 0, min = -1U, max = 0, t = 0;
-	for ( i = 0; i < ARRAY_LEN(labelhash); ++i)
+	for ( i = 0; i < sizeof(labelhash)/sizeof(labelhash[0]); ++i)
 	{
 		unsigned n = 0;
 		h = labelhash[i];
@@ -277,7 +277,7 @@ static void labelhash_free(void)
 		min = MIN(min, n);
 		max = MAX(max, n);
 	}
-	printf("total %u, hsize %lu, zero %u, min %u, max %u\n", t, ARRAY_LEN(labelhash), z, min, max);
+	printf("total %u, hsize %lu, zero %u, min %u, max %u\n", t, sizeof(labelhash)/sizeof(labelhash[0]), z, min, max);
 	memset(labelhash, 0, sizeof(labelhash));
 }
 
@@ -593,7 +593,7 @@ static void emit_mov(const char* mnemonic, arg_t arg1, arg_t arg2, void* data)
 				crap("value too large for 16bit register");
 			emit1(0x66);
 		}
-		else if(!(arg2.v.reg & R_64))
+		else if(!arg2.v.reg & R_64)
 		{
 			if(!isu32(arg1.v.imm))
 				crap("value too large for 32bit register");
@@ -989,7 +989,7 @@ static op_t* getop(const char* n)
 #else
 	unsigned m, t, b;
 	int r;
-	t = ARRAY_LEN(ops)-1;
+	t = sizeof(ops)/sizeof(ops[0])-1;
 	b = 0;
 
 	while(b <= t)
@@ -1280,7 +1280,7 @@ void assembler_init(int pass)
 	if(!ops_sorted)
 	{
 		ops_sorted = 1;
-		qsort(ops, ARRAY_LEN(ops)-1, sizeof(ops[0]), opsort);
+		qsort(ops, sizeof(ops)/sizeof(ops[0])-1, sizeof(ops[0]), opsort);
 	}
 }
 

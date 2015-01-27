@@ -291,9 +291,13 @@ void MSG_WriteLong( msg_t *sb, int c ) {
 }
 
 void MSG_WriteFloat( msg_t *sb, float f ) {
-	floatint_t dat;
+	union {
+		float	f;
+		int	l;
+	} dat;
+	
 	dat.f = f;
-	MSG_WriteBits( sb, dat.i, 32 );
+	MSG_WriteBits( sb, dat.l, 32 );
 }
 
 void MSG_WriteString( msg_t *sb, const char *s ) {
@@ -385,17 +389,6 @@ int MSG_ReadByte( msg_t *msg ) {
 	return c;
 }
 
-int MSG_LookaheadByte( msg_t *msg ) {
-	const int bloc = Huff_getBloc();
-	const int readcount = msg->readcount;
-	const int bit = msg->bit;
-	int c = MSG_ReadByte(msg);
-	Huff_setBloc(bloc);
-	msg->readcount = readcount;
-	msg->bit = bit;
-	return c;
-}
-
 int MSG_ReadShort( msg_t *msg ) {
 	int	c;
 	
@@ -419,9 +412,13 @@ int MSG_ReadLong( msg_t *msg ) {
 }
 
 float MSG_ReadFloat( msg_t *msg ) {
-	floatint_t dat;
+	union {
+		byte	b[4];
+		float	f;
+		int	l;
+	} dat;
 	
-	dat.i = MSG_ReadBits( msg, 32 );
+	dat.l = MSG_ReadBits( msg, 32 );
 	if ( msg->readcount > msg->cursize ) {
 		dat.f = -1;
 	}	
@@ -536,7 +533,7 @@ delta functions
 
 extern cvar_t *cl_shownet;
 
-#define	LOG(x) if( cl_shownet->integer == 4 ) { Com_Printf("%s ", x ); };
+#define	LOG(x) if( cl_shownet && cl_shownet->integer == 4 ) { Com_Printf("%s ", x ); };
 
 void MSG_WriteDelta( msg_t *msg, int oldV, int newV, int bits ) {
 	if ( oldV == newV ) {
@@ -555,22 +552,20 @@ int	MSG_ReadDelta( msg_t *msg, int oldV, int bits ) {
 }
 
 void MSG_WriteDeltaFloat( msg_t *msg, float oldV, float newV ) {
-	floatint_t fi;
 	if ( oldV == newV ) {
 		MSG_WriteBits( msg, 0, 1 );
 		return;
 	}
-	fi.f = newV;
 	MSG_WriteBits( msg, 1, 1 );
-	MSG_WriteBits( msg, fi.i, 32 );
+	MSG_WriteBits( msg, *(int *)&newV, 32 );
 }
 
 float MSG_ReadDeltaFloat( msg_t *msg, float oldV ) {
 	if ( MSG_ReadBits( msg, 1 ) ) {
-		floatint_t fi;
+		float	newV;
 
-		fi.i = MSG_ReadBits( msg, 32 );
-		return fi.f;
+		*(int *)&newV = MSG_ReadBits( msg, 32 );
+		return newV;
 	}
 	return oldV;
 }
@@ -611,22 +606,20 @@ int	MSG_ReadDeltaKey( msg_t *msg, int key, int oldV, int bits ) {
 }
 
 void MSG_WriteDeltaKeyFloat( msg_t *msg, int key, float oldV, float newV ) {
-	floatint_t fi;
 	if ( oldV == newV ) {
 		MSG_WriteBits( msg, 0, 1 );
 		return;
 	}
-	fi.f = newV;
 	MSG_WriteBits( msg, 1, 1 );
-	MSG_WriteBits( msg, fi.i ^ key, 32 );
+	MSG_WriteBits( msg, (*(int *)&newV) ^ key, 32 );
 }
 
 float MSG_ReadDeltaKeyFloat( msg_t *msg, int key, float oldV ) {
 	if ( MSG_ReadBits( msg, 1 ) ) {
-		floatint_t fi;
+		float	newV;
 
-		fi.i = MSG_ReadBits( msg, 32 ) ^ key;
-		return fi.f;
+		*(int *)&newV = MSG_ReadBits( msg, 32 ) ^ key;
+		return newV;
 	}
 	return oldV;
 }
@@ -880,7 +873,7 @@ void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entity
 	float		fullFloat;
 	int			*fromF, *toF;
 
-	numFields = ARRAY_LEN( entityStateFields );
+	numFields = sizeof(entityStateFields)/sizeof(entityStateFields[0]);
 
 	// all fields should be 32 bits to avoid any compiler packing issues
 	// the "number" field is not part of the field list
@@ -988,6 +981,8 @@ If the delta removes the entity, entityState_t->number will be set to MAX_GENTIT
 Can go from either a baseline or a previous packet_entity
 ==================
 */
+extern	cvar_t	*cl_shownet;
+
 void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, 
 						 int number) {
 	int			i, lc;
@@ -1012,7 +1007,7 @@ void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to,
 	if ( MSG_ReadBits( msg, 1 ) == 1 ) {
 		Com_Memset( to, 0, sizeof( *to ) );	
 		to->number = MAX_GENTITIES - 1;
-		if ( cl_shownet->integer >= 2 || cl_shownet->integer == -1 ) {
+		if ( cl_shownet && (cl_shownet->integer >= 2 || cl_shownet->integer == -1) ) {
 			Com_Printf( "%3i: #%-3i remove\n", msg->readcount, number );
 		}
 		return;
@@ -1025,12 +1020,12 @@ void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to,
 		return;
 	}
 
-	numFields = ARRAY_LEN( entityStateFields );
+	numFields = sizeof(entityStateFields)/sizeof(entityStateFields[0]);
 	lc = MSG_ReadByte(msg);
 
 	// shownet 2/3 will interleave with other printed info, -1 will
 	// just print the delta records`
-	if ( cl_shownet->integer >= 2 || cl_shownet->integer == -1 ) {
+	if ( cl_shownet && (cl_shownet->integer >= 2 || cl_shownet->integer == -1) ) {
 		print = 1;
 		Com_Printf( "%3i: #%-3i ", msg->readcount, to->number );
 	} else {
@@ -1191,7 +1186,7 @@ void MSG_WriteDeltaPlayerstate( msg_t *msg, struct playerState_s *from, struct p
 
 	c = msg->cursize;
 
-	numFields = ARRAY_LEN( playerStateFields );
+	numFields = sizeof( playerStateFields ) / sizeof( playerStateFields[0] );
 
 	lc = 0;
 	for ( i = 0, field = playerStateFields ; i < numFields ; i++, field++ ) {
@@ -1351,14 +1346,14 @@ void MSG_ReadDeltaPlayerstate (msg_t *msg, playerState_t *from, playerState_t *t
 
 	// shownet 2/3 will interleave with other printed info, -2 will
 	// just print the delta records
-	if ( cl_shownet->integer >= 2 || cl_shownet->integer == -2 ) {
+	if ( cl_shownet && (cl_shownet->integer >= 2 || cl_shownet->integer == -2) ) {
 		print = 1;
 		Com_Printf( "%3i: playerstate ", msg->readcount );
 	} else {
 		print = 0;
 	}
 
-	numFields = ARRAY_LEN( playerStateFields );
+	numFields = sizeof( playerStateFields ) / sizeof( playerStateFields[0] );
 	lc = MSG_ReadByte(msg);
 
 	for ( i = 0, field = playerStateFields ; i < lc ; i++, field++ ) {

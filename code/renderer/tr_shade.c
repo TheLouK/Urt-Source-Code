@@ -455,19 +455,9 @@ static void ProjectDlightTexture_altivec( void ) {
 		radius = dl->radius;
 		scale = 1.0f / radius;
 
-		if(r_greyscale->integer)
-		{
-			float luminance;
-			
-			luminance = (dl->color[0] * 255.0f + dl->color[1] * 255.0f + dl->color[2] * 255.0f) / 3;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else
-		{
-			floatColor[0] = dl->color[0] * 255.0f;
-			floatColor[1] = dl->color[1] * 255.0f;
-			floatColor[2] = dl->color[2] * 255.0f;
-		}
+		floatColor[0] = dl->color[0] * 255.0f;
+		floatColor[1] = dl->color[1] * 255.0f;
+		floatColor[2] = dl->color[2] * 255.0f;
 		floatColorVec0 = vec_ld(0, floatColor);
 		floatColorVec1 = vec_ld(11, floatColor);
 		floatColorVec0 = vec_perm(floatColorVec0,floatColorVec0,floatColorVecPerm);
@@ -609,20 +599,9 @@ static void ProjectDlightTexture_scalar( void ) {
 		radius = dl->radius;
 		scale = 1.0f / radius;
 
-		if(r_greyscale->integer)
-		{
-			float luminance;
-			
-			luminance = (dl->color[0] * 255.0f + dl->color[1] * 255.0f + dl->color[2] * 255.0f) / 3;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else
-		{
-			floatColor[0] = dl->color[0] * 255.0f;
-			floatColor[1] = dl->color[1] * 255.0f;
-			floatColor[2] = dl->color[2] * 255.0f;
-		}
-
+		floatColor[0] = dl->color[0] * 255.0f;
+		floatColor[1] = dl->color[1] * 255.0f;
+		floatColor[2] = dl->color[2] * 255.0f;
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			int		clip = 0;
 			vec3_t	dist;
@@ -959,18 +938,6 @@ static void ComputeColors( shaderStage_t *pStage )
 			break;
 		}
 	}
-	
-	// if in greyscale rendering mode turn all color values into greyscale.
-	if(r_greyscale->integer)
-	{
-		int scale;
-		
-		for(i = 0; i < tess.numVertexes; i++)
-		{
-			scale = (tess.svars.colors[i][0] + tess.svars.colors[i][1] + tess.svars.colors[i][2]) / 3;
-			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-		}
-	}
 }
 
 /*
@@ -1163,7 +1130,10 @@ void RB_StageIteratorGeneric( void )
 	//
 	// set face culling appropriately
 	//
-	GL_Cull( input->shader->cullType );
+	if ((backEnd.currentEntity->e.renderfx & RF_SWAPCULL) && (input->shader->cullType < CT_TWO_SIDED))
+		GL_Cull(!input->shader->cullType);
+	else
+		GL_Cull(input->shader->cullType);
 
 	// set polygon offset if necessary
 	if ( input->shader->polygonOffset )
@@ -1283,7 +1253,10 @@ void RB_StageIteratorVertexLitTexture( void )
 	//
 	// set face culling appropriately
 	//
-	GL_Cull( input->shader->cullType );
+	if ((backEnd.currentEntity->e.renderfx & RF_SWAPCULL) && (input->shader->cullType < CT_TWO_SIDED))
+		GL_Cull(!input->shader->cullType);
+	else
+		GL_Cull(input->shader->cullType);
 
 	//
 	// set arrays and lock
@@ -1351,7 +1324,10 @@ void RB_StageIteratorLightmappedMultitexture( void ) {
 	//
 	// set face culling appropriately
 	//
-	GL_Cull( input->shader->cullType );
+	if ((backEnd.currentEntity->e.renderfx & RF_SWAPCULL) && (input->shader->cullType < CT_TWO_SIDED))
+		GL_Cull(!input->shader->cullType);
+	else
+		GL_Cull(input->shader->cullType);
 
 	//
 	// set color, pointers, and lock

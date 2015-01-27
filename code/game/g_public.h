@@ -54,8 +54,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 typedef struct {
-	entityState_t  unused;      // apparently this field was put here accidentally
-                  //  (and is kept only for compatibility, as a struct pad)
+	entityState_t	s;				// communicated by server to clients
 
 	qboolean	linked;				// qfalse if not in any good cluster
 	int			linkcount;
@@ -84,8 +83,8 @@ typedef struct {
 	// when a trace call is made and passEntityNum != ENTITYNUM_NONE,
 	// an ent will be excluded from testing if:
 	// ent->s.number == passEntityNum	(don't interact with self)
-	// ent->r.ownerNum == passEntityNum  (don't interact with your own missiles)
-	// entity[ent->r.ownerNum].r.ownerNum == passEntityNum  (don't interact with other missiles from owner)
+	// ent->s.ownerNum = passEntityNum	(don't interact with your own missiles)
+	// entity[ent->s.ownerNum].ownerNum = passEntityNum	(don't interact with other missiles from owner)
 	int			ownerNum;
 } entityShared_t;
 
@@ -107,7 +106,7 @@ typedef struct {
 typedef enum {
 	//============== general Quake services ==================
 
-	G_PRINT,		// ( const char *string );
+	G_PRINT = 0,		// ( const char *string );
 	// print message on the local console
 
 	G_ERROR,		// ( const char *string );
@@ -229,7 +228,7 @@ typedef enum {
 	
 	// 1.32
 	G_FS_SEEK,
-
+	
 	BOTLIB_SETUP = 200,				// ( void );
 	BOTLIB_SHUTDOWN,				// ( void );
 	BOTLIB_LIBVAR_SET,
@@ -387,7 +386,15 @@ typedef enum {
 	BOTLIB_PC_LOAD_SOURCE,
 	BOTLIB_PC_FREE_SOURCE,
 	BOTLIB_PC_READ_TOKEN,
-	BOTLIB_PC_SOURCE_FILE_AND_LINE
+	BOTLIB_PC_SOURCE_FILE_AND_LINE,
+
+	//@Barbatos
+#ifdef USE_AUTH
+	G_NET_STRINGTOADR = 600,
+	G_NET_SENDPACKET,
+	G_SYS_STARTPROCESS,
+	G_AUTH_DROP_CLIENT
+#endif
 
 } gameImport_t;
 
@@ -425,6 +432,15 @@ typedef enum {
 	// The game can issue trap_argc() / trap_argv() commands to get the command
 	// and parameters.  Return qfalse if the game doesn't recognize it as a command.
 
-	BOTAI_START_FRAME				// ( int time );
+	BOTAI_START_FRAME,				// ( int time );
+	
+	//@Barbatos
+	#ifdef USE_AUTH
+	GAME_AUTHSERVER_HEARTBEAT,
+	GAME_AUTHSERVER_SHUTDOWN,
+	GAME_AUTHSERVER_PACKET,
+	GAME_AUTH_WHOIS,
+	GAME_AUTH_BAN
+	#endif
 } gameExport_t;
 

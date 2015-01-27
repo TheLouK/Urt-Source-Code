@@ -1,2 +1,2 @@
-build/release-linux-i386/ded/snapvectora.o: code/asm/snapvectora.s \
- code/asm/qasm.h code/asm/../qcommon/q_platform.h
+build/release-linux-i386/ded/snapvectora.o: code/unix/snapvectora.s \
+ code/unix/qasm.h code/unix/../qcommon/q_platform.h

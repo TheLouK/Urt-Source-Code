@@ -6,8 +6,6 @@
 	promptbinaries="yes"
 	reinstall="yes"
 	nopromptoverwrite="yes"
-	nomenuitems="yes"
-	postinstall="install-desktop-files.sh"
 	preuninstall="preuninstall.sh">
   <readme>
     README
@@ -35,7 +33,7 @@ ifelse(HAVE_I386,yes,dnl
     </option>
 )dnl
 ifelse(HAVE_PPC,yes,dnl
-    <option install="true" if="|(ppc,ppc64)">
+    <option install="true">
      <binary libc="any" symlink="ioquake3" icon="quake3.png" name="ioquake3">ioquake3</binary>
      ioq3 ppc binaries
      <files>
@@ -44,32 +42,11 @@ ifelse(HAVE_PPC,yes,dnl
      <help>you need the binaries to play the game</help>
     </option>
 )dnl
-ifelse(HAVE_PPC64,yes,dnl
-    <option install="true" arch="ppc64">
-     <binary libc="any" symlink="ioquake3" icon="quake3.png" name="ioquake3">ioquake3</binary>
-     ioq3 ppc64 binaries
-     <files>
-       ioquake3.ppc64.tar
-     </files>
-     <help>you need the binaries to play the game</help>
-    </option>
-)dnl
-    <option install="true">
-     Desktop menu entries
-     <files mode="0755">
-       xdg-desktop-menu
-     </files>
-     <files>
-       ioquake3.desktop.in
-     </files>
-    </option>
-
     <option install="true" show="false">
       shared data
       <files>
 	quake3.png
 	COPYING
-	voip-readme.txt
       </files>
     </option>
   </component>

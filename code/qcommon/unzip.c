@@ -7,8 +7,7 @@
  *
  *****************************************************************************/
 
-#include "../qcommon/q_shared.h"
-#include "../qcommon/qcommon.h"
+#include "../client/client.h"
 #include "unzip.h"
 
 /* unzip.h -- IO for uncompress .zip files using zlib 
@@ -1109,8 +1108,7 @@ static int unzlocal_getShort (FILE* fin, uLong *pX)
 {
 	short	v;
 
-	size_t size;
-	size = fread( &v, sizeof(v), 1, fin );
+	fread( &v, sizeof(v), 1, fin );
 
 	*pX = LittleShort( v);
 	return UNZ_OK;
@@ -1139,8 +1137,7 @@ static int unzlocal_getLong (FILE *fin, uLong *pX)
 {
 	int		v;
 
-	size_t size;
-	size = fread( &v, sizeof(v), 1, fin );
+	fread( &v, sizeof(v), 1, fin );
 
 	*pX = LittleLong( v);
 	return UNZ_OK;
@@ -2063,9 +2060,9 @@ extern int unzReadCurrentFile  (unzFile file, void *buf, unsigned len)
 			uTotalOutAfter = pfile_in_zip_read_info->stream.total_out;
 			uOutThis = uTotalOutAfter-uTotalOutBefore;
 			
-//			pfile_in_zip_read_info->crc32 = 
-//                crc32(pfile_in_zip_read_info->crc32,bufBefore,
-//                        (uInt)(uOutThis));
+			// pfile_in_zip_read_info->crc32 =
+            //    crc32(pfile_in_zip_read_info->crc32,bufBefore,
+            //            (uInt)(uOutThis));
 
 			pfile_in_zip_read_info->rest_read_uncompressed -=
                 uOutThis;

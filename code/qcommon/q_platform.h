@@ -29,7 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define id386 0
 #define idppc 0
 #define idppc_altivec 0
-#define idsparc 0
 
 #else
 
@@ -59,12 +58,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define idppc_altivec 0
 #endif
 
-#if defined(__sparc__) && !defined(C_ONLY)
-#define idsparc 1
-#else
-#define idsparc 0
-#endif
-
 #endif
 
 #ifndef __ASM_I386__ // don't include the C bits if included from qasm.h
@@ -80,9 +73,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define QDECL __cdecl
 
 #if defined( _MSC_VER )
-#define OS_STRING "win_msvc"
+#define OS_STRING "win"
 #elif defined __MINGW32__
-#define OS_STRING "win_mingw"
+#define OS_STRING "win"
 #endif
 
 #define ID_INLINE __inline
@@ -181,10 +174,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <sys/types.h>
 #include <machine/endian.h>
-
-#ifndef __BSD__
-  #define __BSD__
-#endif
 
 #if defined(__FreeBSD__)
 #define OS_STRING "freebsd"

@@ -59,6 +59,8 @@ typedef struct sfx_s {
 	char 			soundName[MAX_QPATH];
 	int				lastTimeUsed;
 	struct sfx_s	*next;
+	
+	qboolean		weaponsound;
 } sfx_t;
 
 typedef struct {
@@ -87,14 +89,22 @@ typedef struct loopSound_s {
 	int			framenum;
 } loopSound_t;
 
+typedef struct 
+{
+	int			vol; // Must be first member due to union (see channel_t)
+	int 		offset;
+	int 		bassvol;
+	int 		bassoffset;
+	int			reverbvol;
+	int			reverboffset;
+} ch_side_t;
+
 typedef struct
 {
 	int			allocTime;
 	int			startSample;	// START_SAMPLE_IMMEDIATE = set immediately on next mix
 	int			entnum;			// to allow overriding a specific sound
 	int			entchannel;		// to allow overriding a specific sound
-	int			leftvol;		// 0-255 volume after spatialization
-	int			rightvol;		// 0-255 volume after spatialization
 	int			master_vol;		// 0-255 volume before spatialization
 	float		dopplerScale;
 	float		oldDopplerScale;
@@ -102,6 +112,17 @@ typedef struct
 	qboolean	fixed_origin;	// use origin instead of fetching entnum's origin
 	sfx_t		*thesfx;		// sfx structure
 	qboolean	doppler;
+	union
+	{
+		int			leftvol;		// 0-255 volume after spatialization
+		ch_side_t	l;
+	};
+	union
+	{
+		int			rightvol;		// 0-255 volume after spatialization
+		ch_side_t	r;
+	};
+	vec3_t		sodrot;
 } channel_t;
 
 
@@ -125,7 +146,7 @@ typedef struct
 	void (*StartLocalSound)( sfxHandle_t sfx, int channelNum );
 	void (*StartBackgroundTrack)( const char *intro, const char *loop );
 	void (*StopBackgroundTrack)( void );
-	void (*RawSamples)(int stream, int samples, int rate, int width, int channels, const byte *data, float volume);
+	void (*RawSamples)(int samples, int rate, int width, int channels, const byte *data, float volume);
 	void (*StopAllSounds)( void );
 	void (*ClearLoopingSounds)( qboolean killall );
 	void (*AddLoopingSound)( int entityNum, const vec3_t origin, const vec3_t velocity, sfxHandle_t sfx );
@@ -140,13 +161,6 @@ typedef struct
 	void (*ClearSoundBuffer)( void );
 	void (*SoundInfo)( void );
 	void (*SoundList)( void );
-#ifdef USE_VOIP
-	void (*StartCapture)( void );
-	int (*AvailableCaptureSamples)( void );
-	void (*Capture)( int samples, byte *data );
-	void (*StopCapture)( void );
-	void (*MasterGain)( float gain );
-#endif
 } soundInterface_t;
 
 
@@ -160,6 +174,7 @@ typedef struct
 
 // initializes cycling through a DMA buffer and returns information on it
 qboolean SNDDMA_Init(void);
+qboolean SNDDMAHD_DevList(void);
 
 // gets the current DMA position
 int		SNDDMA_GetDMAPos(void);
@@ -180,15 +195,14 @@ extern	channel_t   loop_channels[MAX_CHANNELS];
 extern	int		numLoopChannels;
 
 extern	int		s_paintedtime;
+extern	int		s_rawend;
 extern	vec3_t	listener_forward;
 extern	vec3_t	listener_right;
 extern	vec3_t	listener_up;
 extern	dma_t	dma;
 
 #define	MAX_RAW_SAMPLES	16384
-#define MAX_RAW_STREAMS 128
-extern	portable_samplepair_t s_rawsamples[MAX_RAW_STREAMS][MAX_RAW_SAMPLES];
-extern	int		s_rawend[MAX_RAW_STREAMS];
+extern	portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
 
 extern cvar_t *s_volume;
 extern cvar_t *s_musicVolume;
@@ -205,6 +219,7 @@ void		SND_setup( void );
 void S_PaintChannels(int endtime);
 
 void S_memoryLoad(sfx_t *sfx);
+portable_samplepair_t *S_GetRawSamplePointer( void );
 
 // spatializes a channel
 void S_Spatialize(channel_t *ch);

@@ -311,7 +311,7 @@ int AAS_EnableRoutingArea(int areanum, int enable)
 
 	if (areanum <= 0 || areanum >= aasworld.numareas)
 	{
-		if (botDeveloper)
+		if (bot_developer)
 		{
 			botimport.Print(PRT_ERROR, "AAS_EnableRoutingArea: areanum %d out of range\n", areanum);
 		} //end if
@@ -506,11 +506,9 @@ void AAS_CalculateAreaTravelTimes(void)
 	aas_reversedlink_t *revlink;
 	aas_reachability_t *reach;
 	aas_areasettings_t *settings;
-#ifdef DEBUG
 	int starttime;
 
 	starttime = Sys_MilliSeconds();
-#endif
 	//if there are still area travel times, free the memory
 	if (aasworld.areatraveltimes) FreeMemory(aasworld.areatraveltimes);
 	//get the total size of all the area travel times
@@ -889,8 +887,7 @@ void AAS_InitRoutingUpdate(void)
 //===========================================================================
 void AAS_CreateAllRoutingCache(void)
 {
-	int i, j;
-	//int t;
+	int i, j, t;
 
 	aasworld.initialized = qtrue;
 	botimport.Print(PRT_MESSAGE, "AAS_CreateAllRoutingCache\n");
@@ -901,8 +898,7 @@ void AAS_CreateAllRoutingCache(void)
 		{
 			if (i == j) continue;
 			if (!AAS_AreaReachability(j)) continue;
-			AAS_AreaTravelTimeToGoalArea(i, aasworld.areas[i].center, j, TFL_DEFAULT);
-			//t = AAS_AreaTravelTimeToGoalArea(i, aasworld.areas[i].center, j, TFL_DEFAULT);
+			t = AAS_AreaTravelTimeToGoalArea(i, aasworld.areas[i].center, j, TFL_DEFAULT);
 			//Log_Write("traveltime from %d to %d is %d", i, j, t);
 		} //end for
 	} //end for
@@ -1069,7 +1065,7 @@ int AAS_ReadRouteCache(void)
 	botimport.FS_Read(&routecacheheader, sizeof(routecacheheader_t), fp );
 	if (routecacheheader.ident != RCID)
 	{
-		AAS_Error("%s is not a route cache dump\n", filename);
+		AAS_Error("%s is not a route cache dump\n");
 		return qfalse;
 	} //end if
 	if (routecacheheader.version != RCVERSION)
@@ -1607,7 +1603,7 @@ int AAS_AreaRouteToGoalArea(int areanum, vec3_t origin, int goalareanum, int tra
 	//
 	if (areanum <= 0 || areanum >= aasworld.numareas)
 	{
-		if (botDeveloper)
+		if (bot_developer)
 		{
 			botimport.Print(PRT_ERROR, "AAS_AreaTravelTimeToGoalArea: areanum %d out of range\n", areanum);
 		} //end if
@@ -1615,7 +1611,7 @@ int AAS_AreaRouteToGoalArea(int areanum, vec3_t origin, int goalareanum, int tra
 	} //end if
 	if (goalareanum <= 0 || goalareanum >= aasworld.numareas)
 	{
-		if (botDeveloper)
+		if (bot_developer)
 		{
 			botimport.Print(PRT_ERROR, "AAS_AreaTravelTimeToGoalArea: goalareanum %d out of range\n", goalareanum);
 		} //end if

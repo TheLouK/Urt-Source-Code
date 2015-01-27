@@ -21,31 +21,28 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "server.h"
-#include <unistd.h>
-
-#ifdef USE_VOIP
-cvar_t *sv_voip;
-#endif
 
 serverStatic_t	svs;				// persistant server info
 server_t		sv;					// local server
-vm_t			*gvm = NULL;				// game virtual machine
+vm_t			*gvm = NULL;		// game virtual machine
 
-cvar_t	*sv_fps;				// time rate for running non-clients
-cvar_t	*sv_timeout;			// seconds without any message
-cvar_t	*sv_zombietime;			// seconds to sink messages after disconnect
-cvar_t	*sv_rconPassword;		// password for remote server commands
-cvar_t	*sv_privatePassword;	// password for the privateClient slots
+cvar_t	*sv_fps;					// time rate for running non-clients
+cvar_t	*sv_timeout;				// seconds without any message
+cvar_t	*sv_zombietime;				// seconds to sink messages after disconnect
+cvar_t	*sv_rconPassword;			// password for remote server commands
+cvar_t	*sv_rconRecoveryPassword;	// password for recovery the password remote server commands
+cvar_t	*sv_rconAllowedSpamIP;			// this ip is allowed to do spam on rcon
+cvar_t	*sv_privatePassword;		// password for the privateClient slots
 cvar_t	*sv_allowDownload;
 cvar_t	*sv_maxclients;
 
-cvar_t	*sv_privateClients;		// number of clients reserved for password
+cvar_t	*sv_privateClients;			// number of clients reserved for password
 cvar_t	*sv_hostname;
 cvar_t	*sv_master[MAX_MASTER_SERVERS];		// master server ip address
-cvar_t	*sv_reconnectlimit;		// minimum seconds between connect messages
-cvar_t	*sv_showloss;			// report when usercmds are lost
-cvar_t	*sv_padPackets;			// add nop bytes to messages
-cvar_t	*sv_killserver;			// menu system can set to 1 to shut server down
+cvar_t	*sv_reconnectlimit;			// minimum seconds between connect messages
+cvar_t	*sv_showloss;				// report when usercmds are lost
+cvar_t	*sv_padPackets;				// add nop bytes to messages
+cvar_t	*sv_killserver;				// menu system can set to 1 to shut server down
 cvar_t	*sv_mapname;
 cvar_t	*sv_mapChecksum;
 cvar_t	*sv_serverid;
@@ -55,116 +52,94 @@ cvar_t	*sv_minPing;
 cvar_t	*sv_maxPing;
 cvar_t	*sv_gametype;
 cvar_t	*sv_pure;
+cvar_t	*sv_newpurelist;
 cvar_t	*sv_floodProtect;
-cvar_t	*sv_lanForceRate; // dedicated 1 (LAN) server forces local client rates to 99999 (bug #491)
+cvar_t	*sv_lanForceRate;			// dedicated 1 (LAN) server forces local client rates to 99999 (bug #491)
 cvar_t	*sv_strictAuth;
+cvar_t	*sv_clientsPerIp;
 
-cvar_t	*sv_userinfoFloodProtect;	// whether to limit two client userinfo changes per 2000 milliseconds,
-					// default 1 (limit)
+cvar_t	*sv_demonotice;				// notice to print to a client being recorded server-side
+cvar_t  *sv_tellprefix;
+cvar_t  *sv_sayprefix;
+cvar_t 	*sv_demofolder;				//@Barbatos - the name of the folder that contains server-side demos
 
-cvar_t	*sv_block1337;			// whether to block clients with qport 1337,
-					// default 0 don't block
-
+cvar_t  *sv_hideCmd;
+cvar_t  *sv_hideCmdList;
+cvar_t  *sv_noFallDamage;
+cvar_t  *sv_mod;
+cvar_t  *sv_free_stamina;
+cvar_t  *sv_free_walljumps;
+cvar_t  *sv_free_colorScore;
+cvar_t  *sv_free_weapons;
+cvar_t  *sv_red_stamina;
+cvar_t  *sv_red_walljumps;
+cvar_t  *sv_red_colorScore;
+cvar_t  *sv_red_weapons;
+cvar_t  *sv_blue_stamina;
+cvar_t  *sv_blue_walljumps;
+cvar_t  *sv_blue_colorScore;
+cvar_t  *sv_blue_weapons;
+cvar_t  *sv_disableRadio;
+cvar_t  *sv_coloredNames;
+cvar_t  *sv_disableServerCommand;
+cvar_t	*sv_forceAutojoin;
+cvar_t	*sv_totalMute;
 cvar_t	*sv_callvoteRequiredConnectTime;
+cvar_t	*sv_logRconArgs;
 
-cvar_t	*sv_demonotice;		// notice to print to a client being recorded server-side
-cvar_t	*sv_democommands;
+cvar_t	*sv_test;
 
-cvar_t	*sv_limitConnectPacketsPerIP;
-cvar_t	*sv_maxClientsPerIP;
-
-cvar_t	*sv_callvoteCyclemapWaitTime;
-
-cvar_t	*sv_forceAutojoin;		// whether to translate the "team red" and "team blue"
-					// client commands to "team free" (which will autojoin),
-					// default 0 don't translate
-
-cvar_t	*sv_ip2locEnable;		// whether to enable messages showing where players connect from, default 0, disable
-cvar_t	*sv_ip2locHost;			// host and port of the ip2loc service, e.g. "localhost:10020"
-cvar_t	*sv_ip2locPassword;		// password for the ip2loc service
-
-cvar_t	*sv_loadOnlyNeededPaks;		// load only pk3 for current map from top-level game dir
-
-cvar_t	*sv_logRconArgs;		// whether to log rcon command args; 0 don't log, default
-
-cvar_t	*sv_sanitizeNames;		// whether to sanitize names in userinfos, making them just like in UrT
-
-cvar_t	*sv_noKevlar;
-
-cvar_t	*sv_requireValidGuid;	// whether client userinfo must contain a cl_guid, string of length 32 consisting
-				// of characters '0' through '9' and 'A' through 'F', default 0 don't require
-cvar_t	*sv_playerDBHost;	// hostname or IP address for the player database, e.g. "localhost:10030"
-cvar_t	*sv_playerDBPassword;	// password for the player database ban server system
-cvar_t	*sv_playerDBUserInfo;	// whether to send client userinfo strings to player database, default 0 don't send
-cvar_t	*sv_playerDBBanIDs;	// comma separated list of banlists to check with player database
-cvar_t	*sv_permaBanBypass;	// password for avoiding permaban system, client should use "/setu permabanbypass <password>"
-
-cvar_t	*sv_disableRadio;
-
-cvar_t	*sv_reconnectWaitTime;
-
-cvar_t	*sv_specChatGlobal;		// whether to broadcast spec chat globally
-					// default 0 don't broadcast
-
-cvar_t	*sv_tellprefix;
-cvar_t	*sv_sayprefix;
-
-cvar_t	*sv_HidePm;
-cvar_t  *sv_Guns;
-cvar_t  *sv_Money;
-cvar_t *sv_hideBotCmds;
-cvar_t *sv_logPath;
-
-cvar_t	*sv_SpecJoin;
-
-cvar_t *sv_moderatorenable;     // MaJ - 0 to disable all new mod features, 1 to enable them.
-cvar_t *sv_moderatorremoteenable;   // MaJ - 1 to allow moderator commands to be issued from out of game.
-cvar_t *sv_moderatorpass[MAX_MOD_LEVELS];   // MaJ - Mod passwords for each mod level. (empty string for disabled)
-cvar_t *sv_moderatorcommands[MAX_MOD_LEVELS];   // MaJ - Commands each ref is allowed to execute (separated by ,)
-
-//goto, save and load
-cvar_t  *sv_allowGoto;
-cvar_t  *sv_gotoWaitTime;
-cvar_t  *sv_allowLoadPosition;
-cvar_t  *sv_loadPositionWaitTime;
-
-cvar_t	*sv_attractplayers;
-
-cvar_t  *sv_TeleportStation;
-cvar_t	*sv_MedicStation;
-
-// String Replace
-cvar_t  *sv_CensoredStrings;
-cvar_t  *sv_CustomStrings;
-cvar_t  *str_enteredthegame;
-cvar_t  *str_joinedtheredteam;
-cvar_t  *str_joinedtheblueteam;
-cvar_t  *str_joinedthespectators;
-cvar_t  *str_joinedthebattle;
-cvar_t  *str_capturedblueflag;
-cvar_t  *str_capturedredflag;
-cvar_t  *str_hastakentheblueflag;
-cvar_t  *str_hastakentheredflag;
-cvar_t  *str_droppedtheredflag;
-cvar_t  *str_droppedtheblueflag;
-cvar_t  *str_returnedtheredflag;
-cvar_t  *str_returnedtheblueflag;
-cvar_t  *str_theredflaghasreturned2;
-cvar_t  *str_theredflaghasreturned;
-cvar_t  *str_theblueflaghasreturned2;
-cvar_t  *str_theblueflaghasreturned;
-cvar_t  *str_wasslappedbytheadmin;
-cvar_t  *str_youvebeenslapped;
-cvar_t  *str_blueteamwins;
-cvar_t  *str_redteamwins;
-
-cvar_t	*sv_mutewords;
-
-userLoc_t userLocs[SERVER_MAXUSERLOCS];
-int userLocCount = 0;
-
-serverBan_t serverBans[SERVER_MAXBANS];
-int serverBansCount = 0;
+// weapons
+cvar_t  *sv_knife_clips;
+cvar_t  *sv_knife_bullets;
+cvar_t  *sv_knife_slash_firetime;
+cvar_t  *sv_knife_throw_firetime;
+cvar_t  *sv_beretta_clips;
+cvar_t  *sv_beretta_bullets;
+cvar_t  *sv_beretta_firetime;
+cvar_t  *sv_de_clips;
+cvar_t  *sv_de_bullets;
+cvar_t  *sv_spas_clips;
+cvar_t  *sv_spas_bullets;
+cvar_t  *sv_mp5_clips;
+cvar_t  *sv_mp5_bullets;
+cvar_t  *sv_ump_clips;
+cvar_t  *sv_ump_bullets;
+cvar_t  *sv_hk69_clips;
+cvar_t  *sv_hk69_bullets;
+cvar_t  *sv_lr300_clips;
+cvar_t  *sv_lr300_bullets;
+cvar_t  *sv_g36_clips;
+cvar_t  *sv_g36_bullets;
+cvar_t  *sv_psg_clips;
+cvar_t  *sv_psg_bullets;
+cvar_t  *sv_he_clips;
+cvar_t  *sv_he_bullets;
+cvar_t  *sv_flash_clips;
+cvar_t  *sv_flash_bullets;
+cvar_t  *sv_smoke_clips;
+cvar_t  *sv_smoke_bullets;
+cvar_t  *sv_sr8_clips;
+cvar_t  *sv_sr8_bullets;
+cvar_t  *sv_ak_clips;
+cvar_t  *sv_ak_bullets;
+cvar_t  *sv_bomb_clips;
+cvar_t  *sv_bomb_bullets;
+cvar_t  *sv_negev_clips;
+cvar_t  *sv_negev_bullets;
+cvar_t  *sv_m4_clips;
+cvar_t  *sv_m4_bullets;
+cvar_t  *sv_glock_clips;
+cvar_t  *sv_glock_bullets;
+cvar_t  *sv_colt_clips;
+cvar_t  *sv_colt_bullets;
+cvar_t  *sv_mac11_clips;
+cvar_t  *sv_mac11_bullets;
+//@Barbatos
+#ifdef USE_AUTH
+cvar_t	*sv_authServerIP;
+cvar_t  *sv_auth_engine;
+#endif
 
 /*
 =============================================================================
@@ -269,245 +244,39 @@ void SV_AddServerCommand( client_t *client, const char *cmd ) {
 	Q_strncpyz( client->reliableCommands[ index ], cmd, sizeof( client->reliableCommands[ index ] ) );
 }
 
+//check a string
 int str_CheckString(char sub[], char s[]) {
-        int i, j;
-        for (i=0; s[i]; i++) {
-                for (j=0; sub[j] && tolower(sub[j]) == tolower(s[i+j]); j++);
-                if (!sub[j]) {
-                        return i;
-                }
-        }
-        return -1;
-}
-
-void str_ChangeTo(char s[], int *tams, int from, int qtde, char sub[], int tamsub) {
-        int i;
-        if (tamsub > qtde) {
-                for (i=*tams+tamsub-qtde; i > from; i--)
-                        s[i] = s[i-tamsub+qtde];
-        }
-        else if (tamsub < qtde) {
-                for (i=from+tamsub; i < *tams-(qtde-tamsub); i++)
-                        s[i] = s[i+qtde-tamsub];
-        }
-        *tams += tamsub - qtde;
-        for (i=from; i-from < tamsub; i++)
-                s[i] = sub[i-from];
-}
-
-void str_ChangeServerStrings( char *s ) {
-    // maybe find a better solution to declare these cvars? i dont care it works atm
-        int i, len = strlen(s);
-        
-        //^7 joined the battle.\n
-        
-        if ( (i = str_CheckString("^7 joined the battle.",s)) != -1) {
-                str_ChangeTo( s, &len, i, 21, str_joinedthebattle->string, strlen(str_joinedthebattle->string) );
-        }
-        
-        if ( (i = str_CheckString("^7 joined the red team.",s)) != -1) {
-                str_ChangeTo( s, &len, i, 24, str_joinedtheredteam->string, strlen(str_joinedtheredteam->string) );
-        }
-        
-        if ( (i = str_CheckString("^7 joined the blue team.",s)) != -1) {
-                str_ChangeTo( s, &len, i, 25, str_joinedtheblueteam->string, strlen(str_joinedtheblueteam->string) );
-        }
-        // join a team
-        
-        if ( (i = str_CheckString("^7 entered the game",s)) != -1) {
-                str_ChangeTo( s, &len, i, 19, str_enteredthegame->string, strlen(str_enteredthegame->string) );
-        }
-        //entered the game
-        
-        if ( (i = str_CheckString("^7 joined the spectators.",s)) != -1) {
-                str_ChangeTo( s, &len, i, 25, str_joinedthespectators->string, strlen(str_joinedthespectators->string) );
-        }
-        //joined the spectators.
-        
-        if ( (i = str_CheckString("^7 captured the ^1Red flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 27, str_capturedredflag->string, strlen(str_capturedredflag->string) );
-        }
-        if ( (i = str_CheckString("^7 captured the ^4Blue flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 28, str_capturedblueflag->string, strlen(str_capturedblueflag->string) );
-        }
-        //^7 captured the %s flag!
-        
-        if ( (i = str_CheckString("^7 has taken the ^1Red^7 flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 30, str_hastakentheredflag->string, strlen(str_hastakentheredflag->string) );
-        }
-        if ( (i = str_CheckString("^7 has taken the ^4Blue^7 flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 31, str_hastakentheblueflag->string, strlen(str_hastakentheblueflag->string) );
-        }
-        // ^7 has taken the %s^7 flag!
-        
-        if ( (i = str_CheckString("^7 dropped the ^1Red^7 flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 28, str_droppedtheredflag->string, strlen(str_droppedtheredflag->string) );
-        }
-        if ( (i = str_CheckString("^7 dropped the ^4Blue^7 flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 29, str_droppedtheblueflag->string, strlen(str_droppedtheblueflag->string) );
-        }
-        //^7 dropped the ^4Blue^7 flag!
-        
-        if ( (i = str_CheckString("^7 returned the RED flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 25, str_returnedtheredflag->string, strlen(str_returnedtheredflag->string) );
-        }
-        if ( (i = str_CheckString("^7 returned the BLUE flag!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 26, str_returnedtheblueflag->string, strlen(str_returnedtheblueflag->string) );
-        }
-        // ^7 returned the BLUE flag!
-        
-        if ( (i = str_CheckString(" has the ^1BOMB",s)) != -1) {
-                str_ChangeTo( s, &len, i, 15, "^7 has the ^1BOMB", strlen("^7 has the ^1BOMB") );
-        }
-        // Fix color breaking
-        
-        if ( (i = str_CheckString("^4Blue^7 team wins",s)) != -1) {
-                str_ChangeTo( s, &len, i, 18, str_blueteamwins->string, strlen(str_blueteamwins->string) );
-        }
-        //^4Blue^7 team wins
-        if ( (i = str_CheckString("^1Red^7 team wins",s)) != -1) {
-                str_ChangeTo( s, &len, i, 17, str_redteamwins->string, strlen(str_redteamwins->string) );
-        }
-        //^Red^7 team wins
-        
-        if ( (i = str_CheckString("The ^1Red ^7flag has returned",s)) != -1) {
-                str_ChangeTo( s, &len, i, 29, str_theredflaghasreturned->string, strlen(str_theredflaghasreturned->string) );
-        }
-        if ( (i = str_CheckString("The ^4Blue ^7flag has returned",s)) != -1) {
-                str_ChangeTo( s, &len, i, 30, str_theblueflaghasreturned->string, strlen(str_theblueflaghasreturned->string) );
-        }
-        // THE CP : "The %s ^7flag has returned!
-        
-        if ( (i = str_CheckString("^7The RED flag has returned",s)) != -1) {
-                str_ChangeTo( s, &len, i, 27, str_theredflaghasreturned2->string, strlen(str_theredflaghasreturned2->string) );
-        }
-        if ( (i = str_CheckString("^7The BLUE flag has returned",s)) != -1) {
-                str_ChangeTo( s, &len, i, 29, str_theblueflaghasreturned2->string, strlen(str_theblueflaghasreturned2->string) );
-        }
-        // THE PRINT "^7The  flag has returned!
-        
-        if ( (i = str_CheckString(" called a vote.",s)) != -1) {
-                str_ChangeTo( s, &len, i, 15, "^7 called a vote.", strlen("^7 called a vote.") );
-        }
-        // Fix callvote-print color bug
-        
-        if ( (i = str_CheckString(" ^7was ^3SLAPPED!^7 by the Admin",s)) != -1) {
-                str_ChangeTo( s, &len, i, 32, str_wasslappedbytheadmin->string, strlen(str_wasslappedbytheadmin->string) );
-        }
-        if ( (i = str_CheckString(" ^7you've been ^3SLAPPED!",s)) != -1) {
-                str_ChangeTo( s, &len, i, 25, str_youvebeenslapped->string, strlen(str_youvebeenslapped->string) );
-        }
-        // " ^7was ^3SLAPPED!^7 by the Admin"
-        // " ^7you've been ^3SLAPPED!"
-        
-}
-
-int str_HidePm( char *s ) {
-    int i;
-    //str_ChangeTo( s, &strlen(s), i, strlen(s), "^7[^2pm^7]", strlen(s) );
-    if ((i = str_CheckString("chat",s)) != -1)
-    {
-        if ((i = str_CheckString("!pm ",s)) != -1)
-        {
-			return 1;
-        }
-        else if ((i = str_CheckString("!demo ",s)) != -1)
-        {
-			return 1;
+    int i, j;
+    for (i=0; s[i]; i++) {
+        for (j=0; sub[j] && tolower(sub[j]) == tolower(s[i+j]); j++);
+        if (!sub[j]) {
+            return i;
         }
     }
-    return 0;
+    return -1;
 }
 
-
-void str_CensorThisString( char *s ) {
+//check if a string match some strings
+int str_MatchCmd( char *s ) {
+    int     i,j,n=0;
+    char    *cmdList = sv_hideCmdList->string;
+    char    *cmd[20];    
+    char    *temp=strdup(cmdList);
+    char    *separator = " "; // use a space as separator
     
-        int i, len = strlen(s);
-        
-        
-        
-        if (
-                (i = str_CheckString("fuck",s)) != -1 ||
-                (i = str_CheckString("dick",s)) != -1 ||
-                (i = str_CheckString("shit",s)) != -1 ||
-                (i = str_CheckString("slut",s)) != -1 ||
-                (i = str_CheckString("hure",s)) != -1 ||
-                (i = str_CheckString("cunt",s)) != -1 ||
-                (i = str_CheckString("homo",s)) != -1 ||
-                (i = str_CheckString("puta",s)) != -1 ||
-                (i = str_CheckString("nazi",s)) != -1 ||
-                (i = str_CheckString("fick",s)) != -1 
-                )
-        {
-                str_ChangeTo( s, &len, i, 4, "^1****^3", strlen("^0****^3") );
-        }
-        
+    // explode sv_hidecmdlist
+    cmd[n]=strtok(temp, separator);
+    while(cmd[n] && n<4) cmd[++n]=strtok(NULL, separator);
     
-        if (
-                (i = str_CheckString("fotze",s)) != -1 ||
-                (i = str_CheckString("opfer",s)) != -1 ||
-                (i = str_CheckString("arsch",s)) != -1 ||
-                (i = str_CheckString("spack",s)) != -1 ||
-                (i = str_CheckString("nutte",s)) != -1 ||
-                (i = str_CheckString("spast",s)) != -1 ||
-                (i = str_CheckString("bitch",s)) != -1 ||
-                (i = str_CheckString("kurwa",s)) != -1 ||
-                (i = str_CheckString("pussy",s)) != -1 ||
-                (i = str_CheckString("penis",s)) != -1 
-                )
-        {
-                str_ChangeTo( s, &len, i, 5, "^1*****^3", strlen("*****") );
+    if ((i = str_CheckString("chat",s)) != -1){
+        for(j=0; j<n; j++) {
+            if ((i = str_CheckString(cmd[j],s)) != -1){
+                return 1;
+            }
         }
-        
-        
-        if (
-                (i = str_CheckString("hitler",s)) != -1 ||
-                (i = str_CheckString("muschi",s)) != -1 ||
-                (i = str_CheckString("biatch",s)) != -1 ||
-                (i = str_CheckString("nigger",s)) != -1 ||
-                (i = str_CheckString("putain",s)) != -1 
-                )
-        {
-                str_ChangeTo( s, &len, i, 6, "^1******^3", strlen("^1******^3") );
-        }       
-        
-        if (    
-                (i = str_CheckString("asshole",s)) != -1 ||
-                (i = str_CheckString("maricon",s)) != -1 ||
-                (i = str_CheckString("wixxer",s)) != -1 
-                
-                )
-        {
-                str_ChangeTo( s, &len, i, 7, "^1*******^3", strlen("^1*******^3") );
-        }
-        
-        
-}
-
-//  mutebadword functions
-int mbw_CheckBadWord(char sub[], char s[]) {
-        int i, j;
-        for (i=0; s[i]; i++) {
-                for (j=0; sub[j] && tolower(sub[j]) == tolower(s[i+j]); j++);
-                if (!sub[j]) {
-                        return i;
-                }
-        }
-        return 0;
-}
-int mbw_BadWordMute(char* msg) {
-    int i;
-    char string[1024];
-    strcpy(string,sv_mutewords->string);
-    char * cut;
-        cut = strtok (string,",");
-    while (cut != NULL)
-    {
-        if (i = mbw_CheckBadWord(cut,msg) != -1) {
-            return 1;
-        }
-        cut = strtok (NULL, ",");
-    }
+        free(temp);
+    }    
+    
     return 0;
 }
 
@@ -515,9 +284,13 @@ int mbw_BadWordMute(char* msg) {
 =================
 SV_SendServerCommand
 
-Sends a reliable command string to be interpreted by 
+Sends a reliable command string to be interpreted by
 the client game module: "cp", "print", "chat", etc
 A NULL client will broadcast to all clients
+
+Vega: questa funzione viene chiamata passando come *cl (destinatario del messaggio) tutti i client iterativamente.
+    In questo modo il messaggio viene mandato a tutti. Di questo se ne occupa il metodo SV_AddServerCommand ( cl, message),
+    dove cl è il destinatario.
 =================
 */
 void QDECL SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
@@ -532,7 +305,7 @@ void QDECL SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
 	va_end (argptr);
 
 	msglen = strlen((char *)message);
-
+	
 	// Fix to http://aluigi.altervista.org/adv/q3msgboom-adv.txt
 	// The actual cause of the bug is probably further downstream
 	// and should maybe be addressed later, but this certainly
@@ -540,118 +313,113 @@ void QDECL SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
 	if ( msglen > 1022 ) {
 		return;
 	}
-
-	if (cl != NULL) {
-		if (!strcmp((char *) message, "print \"The admin muted you: you cannot talk.\"\n")) {
-			cl->muted = qtrue;
-		}
-		else if (!strcmp((char *) message, "print \"The admin unmuted you.\"\n")) {
-			cl->muted = qfalse;
-		}
+    
+    if (cl != NULL) {
+        if (!strcmp((char *) message, "print \"The admin muted you: you cannot talk\"\n")) {
+            cl->muted = qtrue;
+        }
+        else if (!strcmp((char *) message, "print \"The admin unmuted you\"\n")) {
+            cl->muted = qfalse;
+        }
+        else if (!strcmp((char *) message, "print \"You have been unmuted\"\n")) {
+            cl->muted = qfalse;
+        }
+    }
+	if (!strcmp((char *) message, "print \"godmode ON\n\"")) {
+		Cmd_ExecuteString (va("bigtext \"%s ^7is now a ^2GoD\"", cl->cname));
 	}
-	//////////////////////////////////////////////////////
-	// separator for mutefix.patch and cyclemaplimit.patch
-	//////////////////////////////////////////////////////
-	if (sv.inCallvoteCyclemap &&
-			cl == NULL &&
-			(!Q_strncmp((char *) message, "print \"", 7)) &&
-			msglen >= 17 + 7 &&
-			!strcmp(" called a vote.\n\"", ((char *) message) + msglen - 17)) {
-		sv.lastCallvoteCyclemapTime = svs.time;
+	if (!strcmp((char *) message, "print \"godmode OFF\n\"")) {
+		Cmd_ExecuteString (va("bigtext \"%s ^7is ^1no more^7 a ^2GoD\"", cl->cname));
 	}
-	////////////////////////////////////////////////////////
-	// separator for cyclemaplimit.patch and incognito.patch
-	////////////////////////////////////////////////////////
+    
+	Com_Printf("%s\n",(char *) message);
+	
 	if (sv.incognitoJoinSpec &&
-			cl == NULL &&
-			(!Q_strncmp((char *) message, "print \"", 7)) &&
-			msglen >= 27 + 7 &&
-			!strcmp("^7 joined the spectators.\n\"", ((char *) message) + msglen - 27)) {
+		cl == NULL &&
+		(!Q_strncmp((char *) message, "print \"", 7)) &&
+		msglen >= 27 + 7 &&
+		!strcmp("^7 joined the spectators.\n\"", ((char *) message) + msglen - 27)) {
 		return;
 	}
-	/////////////////////////////////////////////////////////
-	// separator for incognito.patch and specchatglobal.patch
-	/////////////////////////////////////////////////////////
-
-	if (sv_specChatGlobal->integer > 0 && cl != NULL &&
-			!Q_strncmp((char *) message, "chat \"^7(SPEC) ", 15)) {
-		if (!Q_strncmp((char *) message, sv.lastSpecChat, sizeof(sv.lastSpecChat) - 1)) {
-			return;
+    
+    // hide message
+	int hideThisMessage = 0;
+	if (sv_hideCmd->integer > 0) {
+		if(str_MatchCmd( (char*)message )== 1){
+			hideThisMessage = 1;
 		}
-		Q_strncpyz(sv.lastSpecChat, (char *) message, sizeof(sv.lastSpecChat));
-		 	cl = NULL;
 	}
-
-    if (mbw_CheckBadWord("connected", (char *) message) == -1) { // fix connect bug
-        
-        if (mbw_BadWordMute((char *) message) == 1 && strlen(sv_mutewords->string) != 0) {
-            cl->muted = qtrue;
-            SV_SendServerCommand(cl, "print \"The server muted you: you cannot talk. Reason: %s\"\n", "Bad Word");
-            return;
-        }
+	if (hideThisMessage==1) {
+        // cl sono tutti i client connessi, sendservercommand viene mandato numclients volte        
+        SV_SendServerCommand(cl, "chat \"^3~^7> %s\"",message);
+		return;
+	}// end hide message
+    
+    if (sv_disableServerCommand->integer > 0){
+        // if chat colored string it's already printed with SV_SendMyCommand (if coloredStrings>0) return
+        return;
     }
-
-    /*
-    =================
-    Use the modified strings
-    =================
-    */
-        if (sv_CustomStrings->integer > 0) {
-                str_ChangeServerStrings( (char*)message );
-        }
-        
-        if (sv_CensoredStrings->integer > 0) {
-                // for to censor a sentence for some times more
-                int count;
-                for(count=1; count<=50; count++) // censor 50 words per message because when i write fuck fuck the second does not get censored
-                {
-                        str_CensorThisString( (char*)message );
-                }
-        }
-    
-    
-    if (sv_HidePm->integer > 0) {
-        if(str_HidePm( (char*)message )== 1){
-            
-        }
-        else{
-            if ( cl != NULL ) {
-                SV_AddServerCommand( cl, (char *)message );
-                return;
-            }
-            
-            // hack to echo broadcast prints to console
-            if ( com_dedicated->integer && !strncmp( (char *)message, "print", 5) ) {
-                Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
-            }
-            
-            // send the data to all relevent clients
-            for (j = 0, client = svs.clients; j < sv_maxclients->integer ; j++, client++) {
-                SV_AddServerCommand( client, (char *)message );
-            }
-            
-            
-        }
-        
+    if ( cl != NULL ) {        
+        SV_AddServerCommand( cl, (char *)message );// cl destinatario mex
+        return;
     }
     
-    if (sv_HidePm->integer == 0) {
-        if ( cl != NULL ) {
-			SV_AddServerCommand( cl, (char *)message );
-			return;
+    // hack to echo broadcast prints to console
+    if ( com_dedicated->integer && !strncmp( (char *)message, "print", 5) ) {
+        Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
+    }
+
+    // send the data to all relevent clients
+    for (j = 0, client = svs.clients; j < sv_maxclients->integer ; j++, client++) {
+        SV_AddServerCommand( client, (char *)message );
+    }
+    
+}
+
+void QDECL SV_SendMyCommand(client_t *cl, const char *fmt, ...) {
+    va_list		argptr;
+    byte		message[MAX_MSGLEN];
+    client_t	*client;
+    int			j;
+    
+    va_start (argptr,fmt);
+    Q_vsnprintf ((char *)message, sizeof(message), fmt,argptr);
+    va_end (argptr);
+    
+    // Fix to http://aluigi.altervista.org/adv/q3msgboom-adv.txt
+    // The actual cause of the bug is probably further downstream
+    // and should maybe be addressed later, but this certainly
+    // fixes the problem for now
+    if ( strlen ((char *)message) > 1022 ) {
+        return;
+    }
+    
+    // hide message
+    int hideThisMessage = 0;
+    if (sv_hideCmd->integer > 0) {
+        if(str_MatchCmd( (char*)message )== 1){
+            hideThisMessage = 1;
         }
-        
-        // hack to echo broadcast prints to console
-        if ( com_dedicated->integer && !strncmp( (char *)message, "print", 5) ) {
-            Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
-        }
-        
-        // send the data to all relevent clients
-        for (j = 0, client = svs.clients; j < sv_maxclients->integer ; j++, client++) {
-            SV_AddServerCommand( client, (char *)message );
-        }
-		
-		
+    }
+    if (hideThisMessage==1) {
+        // cl sono tutti i client connessi, sendservercommand viene mandato numclients volte        
+        //SV_SendServerCommand(cl, "chat \"^3~^7> %s\"",message);
+        return;
+    }// end hide message
+    
+    if ( cl != NULL ) {        
+        SV_AddServerCommand( cl, (char *)message );// cl destinatario mex
+        return;
+    }
+    
+    // hack to echo broadcast prints to console
+    if ( com_dedicated->integer && !strncmp( (char *)message, "print", 5) ) {
+        Com_Printf ("broadcast: %s\n", SV_ExpandNewlines((char *)message) );
+    }
+    
+    // send the data to all relevent clients
+    for (j = 0, client = svs.clients; j < sv_maxclients->integer ; j++, client++) {
+        SV_AddServerCommand( client, (char *)message );
     }
 }
 
@@ -680,7 +448,6 @@ but not on every player enter or exit.
 void SV_MasterHeartbeat( void ) {
 	static netadr_t	adr[MAX_MASTER_SERVERS];
 	int			i;
-	int			res;
 
 	// "dedicated 1" is for lan play, "dedicated 2" is for inet public play
 	if ( !com_dedicated || com_dedicated->integer != 2 ) {
@@ -694,6 +461,10 @@ void SV_MasterHeartbeat( void ) {
 	svs.nextHeartbeatTime = svs.time + HEARTBEAT_MSEC;
 
 
+	#ifdef USE_AUTH
+	VM_Call( gvm, GAME_AUTHSERVER_HEARTBEAT );
+	#endif
+	
 	// send to group masters
 	for ( i = 0 ; i < MAX_MASTER_SERVERS ; i++ ) {
 		if ( !sv_master[i]->string[0] ) {
@@ -707,8 +478,7 @@ void SV_MasterHeartbeat( void ) {
 			sv_master[i]->modified = qfalse;
 	
 			Com_Printf( "Resolving %s\n", sv_master[i]->string );
-			res = NET_StringToAdr( sv_master[i]->string, &adr[i], NA_UNSPEC );
-			if ( !res ) {
+			if ( !NET_StringToAdr( sv_master[i]->string, &adr[i] ) ) {
 				// if the address failed to resolve, clear it
 				// so we don't take repeated dns hits
 				Com_Printf( "Couldn't resolve address: %s\n", sv_master[i]->string );
@@ -716,11 +486,12 @@ void SV_MasterHeartbeat( void ) {
 				sv_master[i]->modified = qfalse;
 				continue;
 			}
-			if ( res == 2 ) {
-				// if no port was specified, use the default master port
+			if ( !strchr( sv_master[i]->string, ':' ) ) {
 				adr[i].port = BigShort( PORT_MASTER );
 			}
-			Com_Printf( "%s resolved to %s\n", sv_master[i]->string, NET_AdrToStringwPort(adr[i]));
+			Com_Printf( "%s resolved to %i.%i.%i.%i:%i\n", sv_master[i]->string,
+				adr[i].ip[0], adr[i].ip[1], adr[i].ip[2], adr[i].ip[3],
+				BigShort( adr[i].port ) );
 		}
 
 
@@ -749,6 +520,10 @@ void SV_MasterShutdown( void ) {
 
 	// when the master tries to poll the server, it won't respond, so
 	// it will be removed from the list
+	
+	#ifdef USE_AUTH
+	VM_Call( gvm, GAME_AUTHSERVER_SHUTDOWN );
+	#endif
 }
 
 
@@ -759,221 +534,6 @@ CONNECTIONLESS COMMANDS
 
 ==============================================================================
 */
-
-typedef struct leakyBucket_s leakyBucket_t;
-struct leakyBucket_s
-{
-    netadrtype_t type;
-    
-    union
-    {
-        byte _4[4];
-        byte _6[16];
-    } ipv;
-    
-    int lastTime;
-    signed char burst;
-    
-    long hash;
-    
-    leakyBucket_t *prev, *next;
-};
-
-// This is deliberately quite large to make it more of an effort to DoS
-#define MAX_BUCKETS            16384
-#define MAX_HASHES            1024
-
-static leakyBucket_t buckets[MAX_BUCKETS];
-static leakyBucket_t *bucketHashes[MAX_HASHES];
-
-/*
-================
-SVC_HashForAddress
-================
-*/
-static long SVC_HashForAddress(netadr_t address)
-{
-    byte *ip = NULL;
-    size_t size = 0;
-    int i;
-    long hash = 0;
-    
-    switch (address.type)
-    {
-        case NA_IP:
-            ip = address.ip;
-            size = 4;
-            break;
-        case NA_IP6:
-            ip = address.ip6;
-            size = 16;
-            break;
-        default:
-            break;
-    }
-    
-    for (i = 0; i < size; i++)
-    {
-        hash += (long) (ip[i]) * (i + 119);
-    }
-    
-    hash = (hash ^ (hash >> 10) ^ (hash >> 20));
-    hash &= (MAX_HASHES - 1);
-    
-    return hash;
-}
-
-/*
-================
-SVC_BucketForAddress
-
-Find or allocate a bucket for an address
-================
-*/
-static leakyBucket_t *SVC_BucketForAddress(netadr_t address, int burst,
-                                           int period)
-{
-    leakyBucket_t *bucket = NULL;
-    int i;
-    long hash = SVC_HashForAddress(address);
-    int now = Sys_Milliseconds();
-    
-    for (bucket = bucketHashes[hash]; bucket; bucket = bucket->next)
-    {
-        switch (bucket->type)
-        {
-            case NA_IP:
-                if (memcmp(bucket->ipv._4, address.ip, 4) == 0)
-                {
-                    return bucket;
-                }
-                break;
-                
-            case NA_IP6:
-                if (memcmp(bucket->ipv._6, address.ip6, 16) == 0)
-                {
-                    return bucket;
-                }
-                break;
-                
-            default:
-                break;
-        }
-    }
-    
-    for (i = 0; i < MAX_BUCKETS; i++)
-    {
-        int interval;
-        
-        bucket = &buckets[i];
-        interval = now - bucket->lastTime;
-        
-        // Reclaim expired buckets
-        if (bucket->lastTime > 0 && interval > (burst * period))
-        {
-            if (bucket->prev != NULL)
-            {
-                bucket->prev->next = bucket->next;
-            }
-            else
-            {
-                bucketHashes[bucket->hash] = bucket->next;
-            }
-            
-            if (bucket->next != NULL)
-            {
-                bucket->next->prev = bucket->prev;
-            }
-            
-            Com_Memset(bucket, 0, sizeof(leakyBucket_t));
-        }
-        
-        if (bucket->type == NA_BAD)
-        {
-            bucket->type = address.type;
-            switch (address.type)
-            {
-                case NA_IP:
-                    Com_Memcpy(bucket->ipv._4, address.ip, 4);
-                    break;
-                case NA_IP6:
-                    Com_Memcpy(bucket->ipv._6, address.ip6, 16);
-                    break;
-                default:
-                    break;
-            }
-            
-            bucket->lastTime = now;
-            bucket->burst = 0;
-            bucket->hash = hash;
-            
-            // Add to the head of the relevant hash chain
-            bucket->next = bucketHashes[hash];
-            if (bucketHashes[hash] != NULL)
-            {
-                bucketHashes[hash]->prev = bucket;
-            }
-            
-            bucket->prev = NULL;
-            bucketHashes[hash] = bucket;
-            
-            return bucket;
-        }
-    }
-    
-    // Couldn't allocate a bucket for this address
-    return NULL;
-}
-
-/*
-================
-SVC_RateLimit
-================
-*/
-static qboolean SVC_RateLimit(leakyBucket_t * bucket, int burst, int period)
-{
-    if (bucket != NULL)
-    {
-        int now = Sys_Milliseconds();
-        int interval = now - bucket->lastTime;
-        int expired = interval / period;
-        int expiredRemainder = interval % period;
-        
-        if (expired > bucket->burst)
-        {
-            bucket->burst = 0;
-            bucket->lastTime = now;
-        }
-        else
-        {
-            bucket->burst -= expired;
-            bucket->lastTime = now - expiredRemainder;
-        }
-        
-        if (bucket->burst < burst)
-        {
-            bucket->burst++;
-            
-            return qfalse;
-        }
-    }
-    
-    return qtrue;
-}
-
-/*
-================
-SVC_RateLimitAddress
-
-Rate limit for a particular address
-================
-*/
-static qboolean SVC_RateLimitAddress(netadr_t from, int burst, int period)
-{
-    leakyBucket_t *bucket = SVC_BucketForAddress(from, burst, period);
-    
-    return SVC_RateLimit(bucket, burst, period);
-}
 
 /*
 ================
@@ -1012,7 +572,7 @@ void SVC_Status( netadr_t from ) {
 		cl = &svs.clients[i];
 		if ( cl->state >= CS_CONNECTED ) {
 			ps = SV_GameClientNum( i );
-			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
+			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n",
 				ps->persistant[PERS_SCORE], cl->ping, cl->name);
 			playerLength = strlen(player);
 			if (statusLength + playerLength >= sizeof(status) ) {
@@ -1035,7 +595,7 @@ if a user is interested in a server to do a full status
 ================
 */
 void SVC_Info( netadr_t from ) {
-	int		i, count;
+	int		i, count, bots;
 	char	*gamedir;
 	char	infostring[MAX_INFO_STRING];
 
@@ -1055,24 +615,15 @@ void SVC_Info( netadr_t from ) {
 
 	// don't count privateclients
 	count = 0;
+	bots = 0;
 	for ( i = sv_privateClients->integer ; i < sv_maxclients->integer ; i++ ) {
 		if ( svs.clients[i].state >= CS_CONNECTED ) {
 			count++;
+
+			if (svs.clients[i].netchan.remoteAddress.type == NA_BOT)
+				bots++;
 		}
 	}
-    int upper, lower, seed, rand;
-        if(sv_attractplayers->integer > 0)
-        {          
-                upper = sv_attractplayers->integer;   
-                lower = 1;
-                seed = Com_Milliseconds();
-                while(lower > rand || rand > upper) {
-                        rand = Q_rand(&seed) % (upper - lower + 1) + lower;
-                }
-                count += rand;
-                if(count > sv_maxclients->integer)
-                        count = sv_maxclients->integer;
-        }
 
 	infostring[0] = 0;
 
@@ -1084,17 +635,21 @@ void SVC_Info( netadr_t from ) {
 	Info_SetValueForKey( infostring, "hostname", sv_hostname->string );
 	Info_SetValueForKey( infostring, "mapname", sv_mapname->string );
 	Info_SetValueForKey( infostring, "clients", va("%i", count) );
-	Info_SetValueForKey( infostring, "sv_maxclients", 
+	Info_SetValueForKey( infostring, "bots", va("%i", bots) );
+	Info_SetValueForKey( infostring, "sv_maxclients",
 		va("%i", sv_maxclients->integer - sv_privateClients->integer ) );
 	Info_SetValueForKey( infostring, "gametype", va("%i", sv_gametype->integer ) );
 	Info_SetValueForKey( infostring, "pure", va("%i", sv_pure->integer ) );
+	
+	//@Barbatos
+	#ifdef USE_AUTH
+	Info_SetValueForKey( infostring, "auth", Cvar_VariableString("auth") );
+	#endif
 
-#ifdef USE_VOIP
-	if (sv_voip->integer) {
-		Info_SetValueForKey( infostring, "voip", va("%i", sv_voip->integer ) );
-	}
-#endif
-
+	//@Barbatos: if it's a passworded server, let the client know (for the server browser)
+	if(Cvar_VariableValue("g_needpass") == 1)
+		Info_SetValueForKey( infostring, "password", va("%i", 1));
+		
 	if( sv_minPing->integer ) {
 		Info_SetValueForKey( infostring, "minPing", va("%i", sv_minPing->integer) );
 	}
@@ -1105,6 +660,8 @@ void SVC_Info( netadr_t from ) {
 	if( *gamedir ) {
 		Info_SetValueForKey( infostring, "game", gamedir );
 	}
+
+	Info_SetValueForKey(infostring, "modversion", Cvar_VariableString("g_modversion"));
 
 	NET_OutOfBandPrint( NS_SERVER, from, "infoResponse\n%s", infostring );
 }
@@ -1121,6 +678,61 @@ void SV_FlushRedirect( char *outputbuf ) {
 
 /*
 ===============
+SVC_RconRecoveryRemoteCommand
+
+An rcon packet arrived from the network.
+Shift down the remaining args
+Redirect all printfs
+===============
+*/
+void SVC_RconRecoveryRemoteCommand( netadr_t from, msg_t *msg ) {
+	qboolean	valid;
+	unsigned int time;
+	// TTimo - scaled down to accumulate, but not overflow anything network wise, print wise etc.
+	// (OOB messages are the bottleneck here)
+#define SV_OUTPUTBUF_LENGTH (1024 - 16)
+	char		sv_outputbuf[SV_OUTPUTBUF_LENGTH];
+	static unsigned int lasttime = 0;
+
+	// TTimo - https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=534
+	time = Com_Milliseconds();
+	
+	if ( !strlen( sv_rconRecoveryPassword->string ) || strcmp (Cmd_Argv(1), sv_rconRecoveryPassword->string) )
+	{
+		// MaJ - If the rconpassword is bad and one just happned recently, don't spam the log file, just die.
+		if ( (unsigned)( time - lasttime ) < 600u )
+			return;
+			
+		valid = qfalse;
+		Com_Printf ("Bad rcon recovery from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2) );
+	} else {
+		// MaJ - If the rconpassword is good, allow it much sooner than a bad one.
+		if ( (unsigned)( time - lasttime ) < 180u )
+			return;
+
+		
+		valid = qtrue;
+		Com_Printf ("Rcon recovery from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2) );
+	}
+	lasttime = time;
+
+	// start redirecting all print outputs to the packet
+	svs.redirectAddress = from;
+	Com_BeginRedirect (sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
+
+	if ( !strlen( sv_rconPassword->string ) ) {
+		Com_Printf ("No rcon recovery password set on the server.\n");
+	} else if ( !valid ) {
+		Com_Printf ("Bad rcon recovery password.\n");
+	} else {
+		Com_Printf ("rconPassword %s\n" , sv_rconPassword->string );
+	}
+
+	Com_EndRedirect ();
+}
+
+/*
+===============
 SVC_RemoteCommand
 
 An rcon packet arrived from the network.
@@ -1132,6 +744,7 @@ void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	qboolean	valid;
 	unsigned int time;
 	char		remaining[1024];
+	netadr_t	allowedSpamIPAdress;
 	// TTimo - scaled down to accumulate, but not overflow anything network wise, print wise etc.
 	// (OOB messages are the bottleneck here)
 #define SV_OUTPUTBUF_LENGTH (1024 - 16)
@@ -1140,15 +753,23 @@ void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	char *cmd_aux;
 
 	// TTimo - https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=534
-	// I believe that this code (and the dead link above) are to address a brute
-	// force attack that guesses the rcon password.
 	time = Com_Milliseconds();
-	if ( !strlen( sv_rconPassword->string ) ||
-		strcmp (Cmd_Argv(1), sv_rconPassword->string) ) {
-		if ( (unsigned)( time - lasttime ) < 50u ) {
-			return;
+	
+	
+	NET_StringToAdr( sv_rconAllowedSpamIP->string , &allowedSpamIPAdress);
+	
+	
+	if ( !strlen( sv_rconPassword->string ) || strcmp (Cmd_Argv(1), sv_rconPassword->string) )
+	{
+		// let's the sv_rconAllowedSpamIP do spam rcon
+		if ( ( !strlen( sv_rconAllowedSpamIP->string ) || !NET_CompareBaseAdr( from , allowedSpamIPAdress ) ) && !NET_IsLocalAddress(from) ){
+			// MaJ - If the rconpassword is bad and one just happned recently, don't spam the log file, just die.
+			if ( (unsigned)( time - lasttime ) < 600u )
+				return;
 		}
+		
 		valid = qfalse;
+		
 		if (sv_logRconArgs->integer > 0) {
 			Com_Printf("Bad rcon from %s\n", NET_AdrToString(from));
 		}
@@ -1156,11 +777,28 @@ void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 			Com_Printf("Bad rcon from %s:\n%s\n", NET_AdrToString(from), Cmd_Argv(2));
 		}
 	} else {
-		if (!Sys_IsLANAddress(from) && (unsigned) (time - lasttime) < 25u) {
-			return;
+	
+		// let's the sv_rconAllowedSpamIP do spam rcon
+		if ( ( !strlen( sv_rconAllowedSpamIP->string ) || !NET_CompareBaseAdr( from , allowedSpamIPAdress ) ) && !NET_IsLocalAddress(from) ){
+			// MaJ - If the rconpassword is good, allow it much sooner than a bad one.
+			if ( (unsigned)( time - lasttime ) < 180u )
+				return;
 		}
+		
 		valid = qtrue;
+		/*Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (from), Cmd_Argv(2) );
+	}
+	lasttime = time;
 
+	// start redirecting all print outputs to the packet
+	svs.redirectAddress = from;
+	Com_BeginRedirect (sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
+
+	if ( !strlen( sv_rconPassword->string ) ) {
+		Com_Printf ("No rconpassword set on the server.\n");
+	} else if ( !valid ) {
+		Com_Printf ("Bad rconpassword.\n");
+	} else {*/
 		remaining[0] = 0;
 		
 		// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=543
@@ -1177,7 +815,9 @@ void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 			cmd_aux++;
 		
 		Q_strcat( remaining, sizeof(remaining), cmd_aux);
-
+		
+//		Cmd_ExecuteString (remaining);
+		
 		if (sv_logRconArgs->integer > 0) {
 			Com_Printf("Rcon from %s: %s\n", NET_AdrToString(from), remaining);
 		}
@@ -1186,11 +826,11 @@ void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 		}
 	}
 	lasttime = time;
-
+	
 	// start redirecting all print outputs to the packet
 	svs.redirectAddress = from;
 	Com_BeginRedirect (sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
-
+	
 	if ( !strlen( sv_rconPassword->string ) ) {
 		Com_Printf ("No rconpassword set on the server.\n");
 	} else if ( !valid ) {
@@ -1198,7 +838,6 @@ void SVC_RemoteCommand( netadr_t from, msg_t *msg ) {
 	} else {		
 		Cmd_ExecuteString (remaining);
 	}
-
 	Com_EndRedirect ();
 }
 
@@ -1210,22 +849,20 @@ DRDoS stands for "Distributed Reflected Denial of Service".
 See here: http://www.lemuria.org/security/application-drdos.html
 
 Returns qfalse if we're good.  qtrue return value means we need to block.
-If the address isn't NA_IP or NA_IP6, it's automatically denied.
+If the address isn't NA_IP, it's automatically denied.
 =================
 */
 qboolean SV_CheckDRDoS(netadr_t from)
 {
-	netadr_t	exactFrom;
 	int		i;
-	floodBan_t	*ban;
-	int		oldestBan;
-	int		oldestBanTime;
 	int		globalCount;
 	int		specificCount;
 	receipt_t	*receipt;
+	netadr_t	exactFrom;
 	int		oldest;
 	int		oldestTime;
 	static int	lastGlobalLogTime = 0;
+	static int	lastSpecificLogTime = 0;
 
 	// Usually the network is smart enough to not allow incoming UDP packets
 	// with a source address being a spoofed LAN address.  Even if that's not
@@ -1234,51 +871,15 @@ qboolean SV_CheckDRDoS(netadr_t from)
 	if (Sys_IsLANAddress(from)) { return qfalse; }
 
 	exactFrom = from;
+	
 	if (from.type == NA_IP) {
 		from.ip[3] = 0; // xx.xx.xx.0
 	}
-	else if (from.type == NA_IP6) {
-		for (i = 8; i < 16; i++) {
-			from.ip6[i] = 0; // Set "interface identifier" to 0.
-		}
-	}
 	else {
-		// So we got a connectionless packet but it's neither IPv4 or IPv6, so
+		// So we got a connectionless packet but it's not IPv4, so
 		// what is it?  I don't care, it doesn't matter, we'll just block it.
 		// This probably won't even happen.
 		return qtrue;
-	}
-
-	// This quick exit strategy while we're being bombarded by getinfo/getstatus requests
-	// directed at a specific IP address doesn't really impact server performance.
-	// The code below does its duty very quickly if we're handling a flood packet.
-	ban = &svs.infoFloodBans[0];
-	oldestBan = 0;
-	oldestBanTime = 0x7fffffff;
-	for (i = 0; i < MAX_INFO_FLOOD_BANS; i++, ban++) {
-		if (svs.time - ban->time < 120000 && // Two minute ban.
-				NET_CompareBaseAdr(from, ban->adr)) {
-			ban->count++;
-			if (!ban->flood && ((svs.time - ban->time) >= 3000) && ban->count <= 5) {
-				Com_DPrintf("Unban info flood protect for address %s, they're not flooding\n",
-						NET_AdrToString(exactFrom));
-				Com_Memset(ban, 0, sizeof(floodBan_t));
-				oldestBan = i;
-				break;
-			}
-			if (ban->count >= 180) {
-				Com_DPrintf("Renewing info flood ban for address %s, received %i getinfo/getstatus requests in %i milliseconds\n",
-						NET_AdrToString(exactFrom), ban->count, svs.time - ban->time);
-				ban->time = svs.time;
-				ban->count = 0;
-				ban->flood = qtrue;
-			}
-			return qtrue;
-		}
-		if (ban->time < oldestBanTime) {
-			oldestBanTime = ban->time;
-			oldestBan = i;
-		}
 	}
 
 	// Count receipts in last 2 seconds.
@@ -1308,28 +909,18 @@ qboolean SV_CheckDRDoS(netadr_t from)
 		}
 	}
 
-	if (specificCount >= 3) { // Already sent 3 to this IP in last 2 seconds.
-		Com_Printf("Possible DRDoS attack to address %s, putting into temporary getinfo/getstatus ban list\n",
-					NET_AdrToString(exactFrom));
-		ban = &svs.infoFloodBans[oldestBan];
-		ban->adr = from;
-		ban->time = svs.time;
-		ban->count = 0;
-		ban->flood = qfalse;
+	if (globalCount == MAX_INFO_RECEIPTS) { // All receipts happened in last 2 seconds.
+		if (lastGlobalLogTime + 1000 <= svs.time){ // Limit one log every second.
+			Com_Printf("Detected flood of getinfo/getstatus connectionless packets\n");
+			lastGlobalLogTime = svs.time;
+		}
 		return qtrue;
 	}
-
-	if (globalCount == MAX_INFO_RECEIPTS) { // All receipts happened in last 2 seconds.
-		// Detect time wrap where the server sets time back to zero.  Problem
-		// is that we're using a static variable here that doesn't get zeroed out when
-		// the time wraps.  TTimo's way of doing this is casting everything including
-		// the difference to unsigned int, but I think that's confusing to the programmer.
-		if (svs.time < lastGlobalLogTime) {
-			lastGlobalLogTime = 0;
-		}
-		if (lastGlobalLogTime + 1000 <= svs.time) { // Limit one log every second.
-			Com_Printf("Detected flood of arbitrary getinfo/getstatus connectionless packets\n");
-			lastGlobalLogTime = svs.time;
+	if (specificCount >= 3) { // Already sent 3 to this IP in last 2 seconds.
+		if (lastSpecificLogTime + 1000 <= svs.time) { // Limit one log every second.
+			Com_DPrintf("Possible DRDoS attack to address %i.%i.%i.%i, ignoring getinfo/getstatus connectionless packet\n",
+					exactFrom.ip[0], exactFrom.ip[1], exactFrom.ip[2], exactFrom.ip[3]);
+			lastSpecificLogTime = svs.time;
 		}
 		return qtrue;
 	}
@@ -1338,482 +929,6 @@ qboolean SV_CheckDRDoS(netadr_t from)
 	receipt->adr = from;
 	receipt->time = svs.time;
 	return qfalse;
-}
-
-/*
-===============
-SVC_HandleIP2Loc
-
-Deal with packets from the ip2loc lookup service.  Packets should be of the form:
-\xFF\xFF\xFF\xFFip2locResponse "getLocationForIP" "<IP address>" "<country code>" "<country>" "<region>" "<city>" "<latitude>" "<longitude>"
-===============
-*/
-void SVC_HandleIP2Loc( netadr_t from ) {
-	char		*arg1;
-	char		*arg2;
-	const	char	*command = "getLocationForIP:xxxxxxxx";
-	int		challenge;
-	char		chalCh;
-	netadr_t	clientadr;
-	int		i;
-	client_t	*cl;
-	qboolean	countryNeedsRegion = qfalse;
-	qboolean	citySpecified = qfalse;
-	qboolean	regionSpecified = qfalse;
-	qboolean	countrySpecified = qfalse;
-	static	qboolean	charMap[256];
-	static	qboolean	charMapInitialized = qfalse;
-	char		*ch;
-
-	if (!(sv_ip2locHost->string[0] && sv_ip2locEnable->integer > 0)) {
-		Com_DPrintf("ip2locResponse packet received from %s unexpectedly\n",
-			NET_AdrToStringwPort(from));
-		return;
-	}
-	// NET_CompareAdr() will compare the .type of the address, which will be NA_BAD for svs.ip2locAddress if resolution failed.
-	if (!NET_CompareAdr(from, svs.ip2locAddress)) {
-		Com_DPrintf("ip2locResponse packet received from invalid ip2loc server: %s\n",
-			NET_AdrToStringwPort(from));
-		return;
-	}
-
-	arg1 = Cmd_Argv(1);
-	if (strlen(command) != strlen(arg1) ||
-			Q_strncmp(command, arg1, 17)) { // Check up to and including the ':'.
-		Com_DPrintf("We only understand \"%s\" on ip2locResponse packets\n", command);
-		return;
-	}
-	challenge = 0;
-	for (i = 0; i < 8; i++) {
-		chalCh = arg1[17 + i];
-		if ('0' <= chalCh && chalCh <= '9') {
-			challenge |= (chalCh - '0') << ((7 - i) << 2);
-		}
-		else if ('a' <= chalCh && chalCh <= 'f') {
-			challenge |= (chalCh - 'a' + 10) << ((7 - i) << 2);
-		}
-		else {
-			Com_DPrintf("Invalid challenge \"%s\" in ip2LocResponse packet\n", arg1 + 17);
-			return;
-		}
-	}
-	Com_DPrintf("SVC_HandleIP2Loc: parsed hex challenge %s to be %i\n", arg1 + 17, challenge);
-
-	arg2 = Cmd_Argv(2);
-	Com_DPrintf("ip2locResponse packet for client address %s\n", arg2);
-	// Make sure this is an IP address (so that DNS lookups won't happen below).
-	if (!NET_IsIP(arg2)) { // Unfortunately does not currently handle IPv6.
-		Com_DPrintf("Invalid IP address in ip2locResponse packet: %s\n", arg2);
-		return;
-	}
-	if (!NET_StringToAdr(arg2, &clientadr, /* NA_UNSPEC */ NA_IP)) { // Should never ever happen.
-		Com_DPrintf("Invalid IP address in ip2locResponse packet: %s\n", arg2);
-		return;
-	}
-
-	if (Sys_IsLANAddress(clientadr)) {
-		Com_DPrintf("Received ip2loc packet for LAN address %s, ignoring\n", NET_AdrToString(clientadr));
-		return;
-	}
-
-	for (i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++) {
-		if (cl->state < CS_CONNECTED || cl->netchan.remoteAddress.type == NA_BOT || cl->location[0] ||
-				challenge != cl->ip2locChallenge) {
-			continue;
-		}
-		if (NET_CompareBaseAdr(clientadr, cl->netchan.remoteAddress)) {
-			if (Cmd_Argv(6)[0]) {
-				Q_strcat(cl->location, sizeof(cl->location), Cmd_Argv(6));
-				citySpecified = qtrue;
-			}
-			if ((!Q_stricmp(Cmd_Argv(3), "US")) || (!Q_stricmp(Cmd_Argv(3), "CA"))) {
-				countryNeedsRegion = qtrue;
-			}
-			if (countryNeedsRegion && Cmd_Argv(5)[0]) {
-				if (citySpecified) {
-					Q_strcat(cl->location, sizeof(cl->location), ", ");
-				}
-				Q_strcat(cl->location, sizeof(cl->location), Cmd_Argv(5));
-				regionSpecified = qtrue;
-			}
-			if (Cmd_Argv(4)[0]) {
-				if (regionSpecified && citySpecified) {
-					Q_strcat(cl->location, sizeof(cl->location), " (");
-				}
-				else if (regionSpecified || citySpecified) {
-					Q_strcat(cl->location, sizeof(cl->location), ", ");
-				}
-				Q_strcat(cl->location, sizeof(cl->location), Cmd_Argv(4));
-				if (regionSpecified && citySpecified) {
-					Q_strcat(cl->location, sizeof(cl->location), ")");
-				}
-				countrySpecified = qtrue;
-			}
-
-			if (citySpecified || regionSpecified || countrySpecified) {
-				// Check the location string.  If the ip2loc server sends malicious strings,
-				// it may force the client to be dropped when we change their userinfo.
-				// Allow the same characters that the checkuserinfo.patch allows.
-				if (!charMapInitialized) {
-					// These are characters that are allowed/disallowed to be in cvar keys and values.
-					for (i = 0;   i <= 31;  i++) { charMap[i] = qfalse; }
-					for (i = 32;  i <= 33;  i++) { charMap[i] = qtrue; }
-					charMap[34] = qfalse; // double quote
-					for (i = 35;  i <= 58;  i++) { charMap[i] = qtrue; }
-					charMap[59] = qfalse; // semicolon
-					for (i = 60;  i <= 91;  i++) { charMap[i] = qtrue; }
-					charMap[92] = qfalse; // backslash
-					for (i = 93;  i <= 126; i++) { charMap[i] = qtrue; }
-					for (i = 127; i <= 255; i++) { charMap[i] = qfalse; }
-					charMapInitialized = qtrue;
-				}
-				ch = cl->location;
-				while (*ch) {
-					if (!charMap[0xff & *ch]) {
-						Com_DPrintf("The ip2loc server is misbehaving; the location for IP %s ended "
-								"up being \"%s\", which contains illegal characters\n",
-								NET_AdrToString(clientadr), cl->location);
-						Q_strncpyz(cl->location, "ILLEGAL CHARACTERS IN LOCATION", sizeof(cl->location));
-						break;
-					}
-					ch++;
-				}
-				
-				if ('\0' == *ch) {
-					// No illegal characters present in location string.
-					SV_SendServerCommand(NULL, "print \"    from %s\n\"", cl->location);
-				}
-			}
-			else {
-				Q_strncpyz(cl->location, "UNKNOWN LOCATION", sizeof(cl->location));
-			}
-			ch = SV_UserinfoChanged(cl);
-			if (ch && ch[0]) { return; }
-			VM_Call(gvm, GAME_CLIENT_USERINFO_CHANGED, cl - svs.clients);
-			return;
-		}
-	}
-}
-
-/*
-================
-SVC_StatuswLoc
-
-Same as SVC_Status() but with [quoted] locations after player names.
-================
-*/
-void SVC_StatuswLoc(netadr_t from) {
-	char		player[1024];
-	char		status[MAX_MSGLEN];
-	int		i;
-	client_t	*cl;
-	playerState_t	*ps;
-	int		statusLength;
-	char		infostring[MAX_INFO_STRING];
-
-	// Ignore if we are in single player.
-	if (Cvar_VariableValue("g_gametype") == GT_SINGLE_PLAYER) {
-		return;
-	}
-
-	Q_strncpyz(infostring, Cvar_InfoString(CVAR_SERVERINFO), sizeof(infostring));
-
-	// Prevent spoofed reply packets.  In case of overflow or illegal characters, it's
-	// OK, we just won't include the challenge in the response.
-	Info_SetValueForKeySilent(infostring, "challenge", Cmd_Argv(1));
-
-	status[0] = '\0'; // In case there are no clients.
-	statusLength = 0;
-
-	for (i = 0; i < sv_maxclients->integer; i++) {
-		if (statusLength >= sizeof(status) - 1) { break; }
-		cl = &svs.clients[i];
-		if (cl->state >= CS_CONNECTED) {
-			ps = SV_GameClientNum(i);
-			Q_snprintf(player, sizeof(player), "%i %i \"%s\" \"%s\"\n",
-					ps->persistant[PERS_SCORE], cl->ping, cl->name, cl->location);
-			Q_strncpyz(status + statusLength, player, sizeof(status) - statusLength);
-			statusLength += strlen(player);
-		}
-	}
-
-	NET_OutOfBandPrint(NS_SERVER, from, "statuswlocResponse\n%s\n%s", infostring, status);
-}
-
-/*
-===============
-SVC_AuthorizePlayer
-
-Deal with packets from the player database ban server.
-===============
-*/
-void SVC_AuthorizePlayer(netadr_t from)
-{
-	char		*arg1;
-	char		*arg2;
-	char		*arg3;
-	int		i;
-	char		ch;
-	netadr_t	clientAddr;
-	int		challenge;
-	qboolean	denied;
-	client_t	*cl;
-	const	char	*command = "authorizePlayer:xxxxxxxx";
-
-	// This is probably a redundant check with the compare of addresses below.
-	if (!sv_playerDBHost->string[0]) {
-		Com_DPrintf("playerDBResponse packet received from %s but no sv_playerDBHost set\n",
-			NET_AdrToStringwPort(from));
-		return;
-	}
-
-	// See if this packet is from the player database server.  Drop it if not.
-	// Note that it's very easy to spoof the source address of a UDP packet, so
-	// we use the challenge concept for further protection.
-	// Note that NET_CompareAdr() does compare the .type of the addresses.
-	if (!NET_CompareAdr(from, svs.playerDatabaseAddress)) {
-		Com_DPrintf("playerDBResponse packet received from invalid playerdb server: %s\n",
-			NET_AdrToStringwPort(from));
-		return;
-	}
-
-	arg1 = Cmd_Argv(1);
-	if (strlen(command) != strlen(arg1) ||
-			Q_strncmp(command, arg1, 16)) { // Check up to and including the ':'.
-		Com_DPrintf("First argument of playerDBResponse packet was \"%s\", not of the form \"%s\"\n",
-				arg1, command);
-		return;
-	}
-	challenge = 0;
-	for (i = 0; i < 8; i++) {
-		ch = arg1[16 + i];
-		if ('0' <= ch && ch <= '9') {
-			challenge |= (ch - '0') << ((7 - i) << 2);
-		}
-		else if ('a' <= ch && ch <= 'f') {
-			challenge |= (ch - 'a' + 10) << ((7 - i) << 2);
-		}
-		else {
-			Com_DPrintf("Invalid challenge \"%s\" in playerDBResponse authorizePlayer packet\n", arg1 + 16);
-			return;
-		}
-	}
-	Com_DPrintf("SVC_AuthorizePlayer: parsed hex challenge %s to be %i\n", arg1 + 16, challenge);
-
-	arg2 = Cmd_Argv(2);
-	// Make sure this is an IP address (so that DNS lookups won't happen below).
-	if (!NET_IsIP(arg2)) { // Does not currently handle IPv6 addresses.
-		Com_DPrintf("Invalid IP address in playerDBResponse packet: %s\n", arg2);
-		return;	
-	}
-
-	if (!NET_StringToAdr(arg2, &clientAddr, /* NA_UNSPEC */ NA_IP)) {
-		// This condition should never happen because of the check above.
-		Com_DPrintf("Invalid IP address in playerDBResponse packet: %s\n", arg2);
-		return;
-	}
-
-	// This is a freak condition that will only happen if someone starts sending random crap
-	// from the auth server IP/port.  We never send auth packets for LAN addresses.
-	if (Sys_IsLANAddress(clientAddr)) {
-		Com_DPrintf("playerDBResponse packet received for a LAN address, ignoring\n");
-		return;
-	}
-
-	arg3 = Cmd_Argv(3);
-	if (!Q_stricmp(arg3, "denied")) {
-		denied = qtrue;
-	}
-	else if (!Q_stricmp(arg3, "allowed")) {
-		denied = qfalse;
-	}
-	else {
-		Com_DPrintf("Invalid third argument in playerDBResponse packet: %s\n", arg3);
-		return;
-	}
-
-	if (challenge & 0x80000000) { // High bit set.  This is a regular periodic auth (not getchallenge).
-		// Find the connected player that has this challenge and IP address.
-		for (i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++) {
-			if (cl->state >= CS_CONNECTED && ((challenge ^ cl->challenge) & 0x7fffffff) == 0 &&
-					NET_CompareBaseAdr(clientAddr, cl->netchan.remoteAddress)) {
-				if (!denied) {
-					// This player is allowed to play, so we don't need any further action.
-					return;
-				}
-				Com_DPrintf("Dropping player %s (address %s) at request of the banserver\n",
-						cl->name, NET_AdrToStringwPort(cl->netchan.remoteAddress));
-				if (sv_permaBanBypass->string[0] &&
-						!strcmp(Info_ValueForKey(cl->userinfo, "permabanbypass"),
-							sv_permaBanBypass->string)) {
-					Com_DPrintf("Ban avoided by having correct permabanbypass\n");
-				}
-				else {
-					SV_DropClient(cl, "denied access");
-					// A brand new challenge will be issued when the client tries to reconnect.
-					// The auth server will be contacted all over again.
-				}
-				return;
-			}
-		}
-		Com_DPrintf("SVC_AuthorizePlayer: player to periodic auth not connected (addr %s)\n",
-				NET_AdrToString(clientAddr));
-		return;
-	}
-
-	// Otherwise this is a getchallenge auth (high bit not set on challenge).
-	for (i = 0; i < MAX_CHALLENGES; i++) {
-		// Checking the connected state of the challenge is actually a bit superfluous because
-		// the chances of another challenge matching in address and challenge number is quite
-		// slim.  I'm still adding the connected check for clarity.
-		if (((challenge ^ svs.challenges[i].challenge) & 0x7fffffff) == 0 && (!svs.challenges[i].connected) &&
-				NET_CompareBaseAdr(clientAddr, svs.challenges[i].adr)) {
-			break;
-		}
-	}
-	if (i == MAX_CHALLENGES) {
-		Com_DPrintf("SVC_AuthorizePlayer: challenge not found\n");
-		return;
-	}
-	if (denied) {
-		Com_DPrintf("Marking challenge for client address %s as banned\n",
-				NET_AdrToStringwPort(svs.challenges[i].adr));
-		// There is a quirk (or "feature") in SV_DirectConnect().  When this banned player
-		// connects via SV_DirectConnect() and their challenge is marked as permabanned,
-		// they will be dropped, but their challenge.connected will never be
-		// reset to false; it will remain as true.  Therefore, when the player
-		// tries to reconnect from scratch (via getchallenge packet), they
-		// will pick up a brand new challenge, which will cause a packet to
-		// be sent to the playerdb auth server all over again.  This is good
-		// because changes to who's banned on the auth server will be picked
-		// up very quickly.  However this is also bad because more packets will
-		// be sent to the auth server.
-		svs.challenges[i].permabanned = qtrue;
-	}
-	// Let the client connect even if they are banned.  We do this for two reasons.
-	// First, we want their userinfo string for the sake of sending it to the playerdb
-	// so that we can track offenders better.  Second, we need a way of letting
-	// innocent players affected by someone else's ban into the server, and the only way
-	// this is possible is by means of the userinfo string, which first appears in
-	// SV_DirectConnect().  We use "permabanbypass" in the userinfo for this.
-	svs.challenges[i].pingTime = svs.time;
-	Com_DPrintf("Sending challengeResponse to %s from SVC_AuthorizePlayer\n",
-			NET_AdrToStringwPort(svs.challenges[i].adr));
-	NET_OutOfBandPrint(NS_SERVER, svs.challenges[i].adr, "challengeResponse %i", svs.challenges[i].challenge);
-}
-
-/*
-================
-SVC_RemoteMod
-================
-*/
-void SVC_RemoteMod(netadr_t from, msg_t * msg)
-{
-    int slot;
-    char *cmd_ptr;
-    char cmdstr[1024];
-    int i;
-    
-#define SV_REMOTEMOD_OUTPUTBUF_LENGTH (1024 - 16)
-    // A place to hold data before we dump it to the client's console.
-    char sv_remotemod_outputbuf[SV_REMOTEMOD_OUTPUTBUF_LENGTH];
-    
-    // Prevent using mod as an amplifier and make dictionary attacks impractical
-    if (SVC_RateLimitAddress(from, 10, 1000))
-    {
-        Com_DPrintf
-        ("SVC_RemoteMod: rate limit from %s exceeded, dropping request\n",
-         NET_AdrToString(from));
-        return;
-    }
-    
-    if (sv_moderatorremoteenable->integer < 1)
-        return;
-    
-    svs.redirectAddress = from; // This will need to be set for later when we tell the client stuff.
-    
-    slot = SVC_GetModSlotByPassword(Cmd_Argv(1));
-    
-    if (!slot)
-    {
-        Com_Printf("Invalid remote mod password from %s. Password: %s\n",
-                   NET_AdrToString(from), Cmd_Argv(1));
-        
-        // Tell the client what happened.
-        Com_BeginRedirect(sv_remotemod_outputbuf, SV_REMOTEMOD_OUTPUTBUF_LENGTH,
-                          SV_FlushRedirect);
-        Com_Printf("Invalid password.\n");
-        Com_EndRedirect();
-        return;
-    }
-    
-    if (!SV_ModCommandAllowed(sv_moderatorcommands[slot - 1]->string,
-                              Cmd_Argv(2)))
-    {
-        Com_Printf("Invalid permissions for command issued from: %s.\n",
-                   NET_AdrToString(from));
-        Com_Printf("Mod slot %i is not able to execute command: %s\n", slot,
-                   Cmd_Argv(2));
-        
-        // Tell the client what happened.
-        Com_BeginRedirect(sv_remotemod_outputbuf, SV_REMOTEMOD_OUTPUTBUF_LENGTH,
-                          SV_FlushRedirect);
-        Com_Printf("You may only execute commands: %s\n",
-                   sv_moderatorcommands[slot - 1]->string);
-        Com_EndRedirect();
-        return;
-    }
-    
-    // To get this far:
-    //   remote mod must be enabled
-    //   a valid password was supplied
-    //   the mod slot has permissions for the command
-    
-    // To deal with quoting, we should use the full comand, skipping until we find the full command line to exec.
-    cmd_ptr = Cmd_Cmd();
-    
-    while (cmd_ptr[0] == ' ')   // Trim off leading spaces.
-        cmd_ptr++;
-    while (cmd_ptr[0] != '\0' && cmd_ptr[0] != ' ') // Trim off packet command.
-        cmd_ptr++;
-    while (cmd_ptr[0] == ' ')   // Trim off more leading spaces.
-        cmd_ptr++;
-    while (cmd_ptr[0] != '\0' && cmd_ptr[0] != ' ') // Trim off password.
-        cmd_ptr++;
-    while (cmd_ptr[0] == ' ')   // Trim off spaces after the password.
-        cmd_ptr++;
-    
-    // Copy the full command to a new string for trimming and execution.
-    cmdstr[0] = '\0';
-    Q_strcat(cmdstr, sizeof(cmdstr), cmd_ptr);
-    
-    // Make sure nobody tried to sneak in a second command into the args with a command separator
-    for (i = 0; cmdstr[i]; i++)
-    {
-        if (cmdstr[i] == ',' || cmdstr[i] == '\n' || cmdstr[i] == '\r' || (cmdstr[i] == '\\' && cmdstr[i + 1] == '$'))  // no cvar substitution (eg \$rconpassword\)
-        {
-            Com_Printf
-            ("Remote mod command rejected from %s. Reason: Command contains separators.\n",
-             NET_AdrToString(from));
-            // Tell the client we rejected the command.
-            Com_BeginRedirect(sv_remotemod_outputbuf,
-                              SV_REMOTEMOD_OUTPUTBUF_LENGTH, SV_FlushRedirect);
-            Com_Printf
-            ("Remote mod command rejected. Reason: Contains an invalid character.\n");
-            Com_EndRedirect();
-            return;
-        }
-    }
-    
-    // Execute our trimmed string.
-    Com_Printf
-    ("Executing remote command from %s under mod slot %i. Command: %s\n",
-     NET_AdrToString(from), slot, cmdstr);
-    Com_BeginRedirect(sv_remotemod_outputbuf, SV_REMOTEMOD_OUTPUTBUF_LENGTH,
-                      SV_FlushRedirect);
-    Cmd_ExecuteString(cmdstr);
-    Com_EndRedirect();
-    
 }
 
 /*
@@ -1829,6 +944,9 @@ connectionless packets.
 void SV_ConnectionlessPacket( netadr_t from, msg_t *msg ) {
 	char	*s;
 	char	*c;
+	#ifdef USE_AUTH
+	netadr_t	authServerIP;
+	#endif
 
 	MSG_BeginReadingOOB( msg );
 	MSG_ReadLong( msg );		// skip the -1 marker
@@ -1841,36 +959,40 @@ void SV_ConnectionlessPacket( netadr_t from, msg_t *msg ) {
 	Cmd_TokenizeString( s );
 
 	c = Cmd_Argv(0);
+	Com_DPrintf ("SV packet %s : %s\n", NET_AdrToString(from), c);
 
 	if (!Q_stricmp(c, "getstatus")) {
 		if (SV_CheckDRDoS(from)) { return; }
 		SVC_Status( from  );
-	} else if (!Q_stricmp(c, "getinfo")) {
+  } else if (!Q_stricmp(c, "getinfo")) {
 		if (SV_CheckDRDoS(from)) { return; }
 		SVC_Info( from );
 	} else if (!Q_stricmp(c, "getchallenge")) {
 		SV_GetChallenge( from );
 	} else if (!Q_stricmp(c, "connect")) {
 		SV_DirectConnect( from );
-#ifndef STANDALONE
-	} else if (!Q_stricmp(c, "ipAuthorize") && !Cvar_VariableIntegerValue("com_standalone")) {
+	} else if (!Q_stricmp(c, "ipAuthorize")) {
 		SV_AuthorizeIpPacket( from );
-#endif
-	} else if (!Q_stricmp(c, "rcon")) {
+	}
+	#ifdef USE_AUTH
+	// @Barbatos @Kalish
+	else if ( (!Q_stricmp(c, "AUTH:SV")))
+	{
+		NET_StringToAdr(sv_authServerIP->string, &authServerIP);
+		
+		if ( !NET_CompareBaseAdr( from, authServerIP ) ) {
+			Com_Printf( "AUTH not from the Auth Server\n" );
+			return;
+		}
+		VM_Call(gvm, GAME_AUTHSERVER_PACKET);
+	}
+	#endif
+	
+	else if (!Q_stricmp(c, "rcon")) {
 		SVC_RemoteCommand( from, msg );
-	} else if (!Q_stricmp(c, "ip2locResponse")) {
-		SVC_HandleIP2Loc( from );
-	} else if (!Q_stricmp(c, "getstatuswloc")) {
-		if (SV_CheckDRDoS(from)) { return; }
-		SVC_StatuswLoc( from );
-	////////////////////////////////////////////////
-	// separator for ip2loc.patch and playerdb.patch
-	////////////////////////////////////////////////
-	} else if (!Q_stricmp(c, "playerDBResponse")) {
-		SVC_AuthorizePlayer( from );
-        } else if (!Q_stricmp(c, "mod")) {
-        SVC_RemoteMod(from, msg);
-    } else if (!Q_stricmp(c, "disconnect")) {
+	}else if (!Q_stricmp(c, "rconRecovery")) {
+		SVC_RconRecoveryRemoteCommand( from, msg );
+	} else if (!Q_stricmp(c, "disconnect")) {
 		// if a client starts up a local server, we may see some spurious
 		// server disconnect messages when their new server sees our final
 		// sequenced messages to the old client
@@ -1878,13 +1000,6 @@ void SV_ConnectionlessPacket( netadr_t from, msg_t *msg ) {
 		Com_DPrintf ("bad connectionless packet from %s:\n%s\n"
 		, NET_AdrToString (from), s);
 	}
-
-	// We moved this from the top of this function to the bottom.
-	// During a DRDoS attack we get thousands of lines of packets
-	// that just garble the screen.  Since we return from this
-	// function early if a DRDoS is detected, we don't print a line
-	// for each attacking packet anymore.
-	Com_DPrintf ("SV packet %s : %s\n", NET_AdrToString(from), c);
 }
 
 //============================================================================
@@ -2010,7 +1125,7 @@ void SV_CalcPings( void ) {
 ==================
 SV_CheckTimeouts
 
-If a packet has not been received from a client for timeout->integer 
+If a packet has not been received from a client for timeout->integer
 seconds, drop the conneciton.  Server time is used instead of
 realtime to avoid dropping the local client while debugging.
 
@@ -2045,13 +1160,14 @@ void SV_CheckTimeouts( void ) {
 			// wait several frames so a debugger session doesn't
 			// cause a timeout
 			if ( ++cl->timeoutCount > 5 ) {
-				SV_DropClient (cl, "timed out"); 
+				SV_DropClient (cl, "timed out");
 				cl->state = CS_FREE;	// don't bother with zombie state
 			}
 		} else {
 			cl->timeoutCount = 0;
 		}
 	}
+	
 }
 
 
@@ -2089,49 +1205,476 @@ qboolean SV_CheckPaused( void ) {
 	return qtrue;
 }
 
-/*
-==================
-SV_TeleportPlayerToLocation
-==================
-*/
-void SV_TeleportPlayerToLocation(int clId, float x, float y, float z) {
-    char    cmd[64];
-    Com_sprintf(cmd, sizeof(cmd), "teleport %i %f %f %f\n", clId, x, y, z); // needs teleport command
-    Cmd_ExecuteString(cmd);
+//UT_WEAPON_SETID(x, y) ((x) = (((x) & 0xFFFFFF00) | (0x000000FF & ((y) KEY) ) ))
+
+qboolean same_team(client_t *cl){
+	playerState_t   *ps;
+	
+	ps = SV_GameClientNum(cl - svs.clients);
+	if (ps->persistant[PERS_TEAM] == cl->lastTeam) {return qtrue;}
+	return qfalse;
+
 }
 
 /*
 ==================
-SV_TeleportPlayerToPlayer
+check_k_weapon
 ==================
 */
-void SV_TeleportPlayerToPlayer(int clId, int targetclId) {
-    char    cmd[64];
+static void check_k_weapon(client_t *cl){
+    playerState_t   *ps;
     
-    Com_sprintf(cmd, sizeof(cmd), "teleport %i %i\n", clId, targetclId); // needs teleport command
-    Cmd_ExecuteString(cmd);
+    ps = SV_GameClientNum(cl - svs.clients);
+    // case 1 (init):
+	// noweap = 0
+	// power 15 = 123123 (empty)
+	// power 14 = 123123 (empty)
+	// ->continue
+	
+	// case 2 (change map):
+	// noweap = 123123
+	// power 15 = 435345 (empty)
+	// power 14 = 435345 (empty)
+	// ->continue
+	
+	// case 3 (give all): DONE
+	// noweap = 123123
+	// power 15 = 756568 (weap)
+	// power 14 = 135124 (weap: if 15 is a weap 14 is too)
+	// ->return
+	
+	// case 4 (normal behave): DONE
+	// noweap = 123123
+	// power 15 = 123123
+	// power 14 = 123123 (or another number)
+	// ->return
+	
+    if (KEY == ps->powerups[15]) {return;} // case 4
+	if (ps->powerups[15] != ps->powerups[14]) {return;} // case 3
+	
+	// case 1 or 2 continue
+	// EXCEPTION if key=0 and power 15 is not empty...can't disarm, but should never happen except if player has gear set to 15 weap...impossible
+	
+    //else if((NOWEAP != 0) && (ps->powerups[15] == KNIFE || ps->powerups[15] == BERETTA)){return;}
+
+    else{// noweap == 0 or powerups[15] != armi
+        //Com_Printf("refreshing keys, noweap: %d, powerups[15]: %d\n", NOWEAP,ps->powerups[15]);
+        
+		KEY = ps->powerups[15];;
+
+		KNIFE = KEY ^ 1; // slash - throw
+		BERETTA = KEY ^ 2;
+		DE = KEY ^ 3;
+		SPAS = KEY ^ 4;
+		MP5 = KEY ^ 5; // burst - auto
+		UMP = KEY ^ 6; // spam - auto
+		HK69 = KEY ^ 7; // short - long
+		LR300 = KEY ^ 8; // burst - semi - auto
+		G36 = KEY ^ 9; // burst - semi - auto
+		PSG = KEY ^ 10;
+		HE = KEY ^ 11;
+		FLASH = KEY ^ 12;
+		SMOKE = KEY ^ 13;
+		SR8 = KEY ^ 14;
+		AK = KEY ^ 15; // burst - semi - auto
+		BOMB = KEY ^ 16; 
+		NEGEV = KEY ^ 17; 
+		// 18 flash flag
+		M4 = KEY ^ 19; // burst - semi - auto
+		GLOCK = KEY ^ 20; // burst - semi
+		COLT = KEY ^ 21;
+		MAC11 = KEY ^ 22;
+
+
+    }
+}
+
+void set_firetime(client_t *cl, playerState_t *ps){
+	//weapon = whatweaponis(ps->powerups[ps->weapon]);
+	// supponendo di capire che sia un knife throw:
+	// leggo il firetime desiderato e lo imposto
+	// ps->weaponTime = sv_knife_throw_firetime->integer;
+	//ps->weaponTime = 376;
+	if (ps->weaponstate == 3){
+		ps->weaponTime = 500;
+		cl->bool_firetime = qfalse;
+	}
+}
+
+void load_client_ps(client_t *cl){
+	playerState_t	*ps;
+	int				i;
+	
+	ps = SV_GameClientNum(cl - svs.clients);
+	
+	for (i=0; i<16; i++) {
+		if (ps->powerups[i] = cl->weaponData[i]);
+	}
+}
+
+void save_client_ps(client_t *cl){
+	playerState_t	*ps;
+	int				i;
+	
+	ps = SV_GameClientNum(cl - svs.clients);
+	
+	for (i=0; i<16; i++) {
+		if (cl->weaponData[i] = ps->powerups[i]);
+	}
+}
+
+qboolean check_client_ps(client_t *cl){
+	playerState_t	*ps;
+	int				i;
+	
+	ps = SV_GameClientNum(cl - svs.clients);
+	
+	for (i=0; i<16; i++) {
+		if (ps->powerups[i] != cl->weaponData[i]){
+			// cambio di weapon, controllo se sparato/ricaricato oppure cambio da menu
+			if ((ps->powerups[i] ^ cl->weaponData[i]) % 256 != 0 ){
+				// ha cambiato da menu!
+				ps->powerups[i] = cl->weaponData[i];
+				return qtrue;
+			}
+			else {
+				// ha sparato/ricaricato, posso disattivare il controllo
+				cl->check_ps_change = qfalse;
+				return qfalse;
+			}
+		}
+	}
+
+	
+}
+
+void broadcastCS(){
+	int				l;
+	client_t		*client_search;
+	
+	for (l = 0, client_search = svs.clients; l < sv_maxclients->integer ; l++, client_search++) {
+		if (client_search->state >= CS_CONNECTED) {
+			Cmd_ExecuteString (va("scc all cs %d \"%s\"", l+544, client_search->lastCS));
+		}
+	}			
+	
 }
 
 /*
 ==================
-SV_CheckLocation
-Returns 1 or -1
-1 = yes player i is in area of xy with the r
--1 = no player i isnt in area of xy with the r
+SV_ModPlayers
 ==================
 */
+static void SV_ModPlayers(void){
+    int             i,team;
+    client_t        *cl;
+    playerState_t   *ps;
+    int             stamina, health, wj;
+    int             j;
+    
+    if ((sv_free_stamina->integer > 0)||(sv_red_stamina->integer > 0)||(sv_blue_stamina->integer > 0)||(sv_free_walljumps->integer > 0)||(sv_red_walljumps->integer > 0)||(sv_blue_walljumps->integer > 0)) {
+        for (i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++){
+            if (cl->state != CS_ACTIVE){
+                cl->countRespawn = 0;
+                continue;
+            }
+			ps = SV_GameClientNum(i);
+            team = ps->persistant[PERS_TEAM];
+            
+            //*********************
+            // player is not spect
+            //*********************
+            
+            if (team != TEAM_SPECTATOR) {                
+                // check weapon key
+                check_k_weapon(cl);
+            }
+            
+            //********
+            // free
+            //********
+            
+            if(team == TEAM_FREE){
+                if(ps->pm_type != PM_NORMAL) continue;
+                
+                // stamina
+                if(sv_free_stamina->integer > 0){
+                    stamina = *((int *)((char*)(ps->stats) + 36)); // misured on 30000
+                    health = ps->stats[STAT_HEALTH]; // misured on 100
+                    
+                    if (sv_free_stamina->integer == 1) {
+                        // set stamina always max
+                        *((int *)((char*)(ps->stats) + 36)) = health * 300;
+                    }
+                    
+                    if (sv_free_stamina->integer == 2) {
+                        if (ps->velocity[0]==0 && ps->velocity[1]==0 && ps->velocity[2]==0){
+                            *((int *)((char*)(ps->stats) + 36)) = health * 300;
+                        }            
+                    }
+                    
+                }
+                
+                // walljumps
+                if(sv_free_walljumps->integer == 1){
+                    ps->generic1 = 0;
+                }
+                
+                // weapons
+                if (cl->countRespawn != ps->persistant[PERS_SPAWN_COUNT]){
+                    cl->countRespawn = ps->persistant[PERS_SPAWN_COUNT]; 
+                    
+                    if (strcmp(sv_free_weapons->string, "") != 0) {
+                        int     k,n=0;
+                        char    *free_weap = sv_free_weapons->string;
+                        char    *weap[20];    
+                        char    *temp=strdup(free_weap);
+                        char    *separator = " ";
+                        
+                        weap[n]=strtok(temp, separator);
+                        while(weap[n] && n<4) weap[++n]=strtok(NULL, separator);
+                        
+                        Cmd_ExecuteString (va("dis %d", i));
+                        for(k=0; k<n; k++) {
+                            Cmd_ExecuteString (va("gw %d \"%s\"", i, weap[k]));
+                        }
+						free(temp);
+						
+						save_client_ps(cl);
+						cl->check_ps_change = qtrue;
+						cl->lastTeam = TEAM_FREE;
+						
+						// use first weapon, FIXME: put last weapon != KEY and DROPKEY
+						ps->weapon = 0;
+					}
+				}
+				// check if weapon is changed by the user at the respawn when shouldnt be forbidden to change
+				if (cl->check_ps_change == qtrue && same_team(cl)){
+					if (check_client_ps(cl)){
+						// FIXME: should check if the player dropped the weapons
+						load_client_ps(cl);
+					}
+				}else{
+					cl->check_ps_change = qfalse;
+				}        
+            }
+            
+            //********
+            // red
+            //********
+            
+            if(team == TEAM_RED){
+                if(ps->pm_type != PM_NORMAL) continue;
+                
+                // stamina
+                if(sv_red_stamina->integer > 0){
+                    stamina = *((int *)((char*)(ps->stats) + 36)); // misured on 30000
+                    health = ps->stats[STAT_HEALTH]; // misured on 100
+                    
+                    if (sv_red_stamina->integer == 1) {
+                        // set stamina always max
+                        *((int *)((char*)(ps->stats) + 36)) = health * 300;
+                    }
+                    
+                    if (sv_red_stamina->integer == 2) {
+                        if (ps->velocity[0]==0 && ps->velocity[1]==0 && ps->velocity[2]==0){
+                            *((int *)((char*)(ps->stats) + 36)) = health * 300;
+                        }            
+                    }
+                    
+                }
+                
+                // walljumps
+                if(sv_red_walljumps->integer == 1){
+                    ps->generic1 = 0;
+                }
+                
+                // weapons
+                if (cl->countRespawn != ps->persistant[PERS_SPAWN_COUNT]){ // EVENT RESPAWN
+                    cl->countRespawn = ps->persistant[PERS_SPAWN_COUNT]; 
+                    
+                    if (strcmp(sv_red_weapons->string, "") != 0) {
+                        int     k,n=0;
+                        char    *red_weap = sv_red_weapons->string;
+                        char    *weap[20];    
+                        char    *temp=strdup(red_weap);
+                        char    *separator = " ";
+                        
+                        weap[n]=strtok(temp, separator);
+                        while(weap[n] && n<4) weap[++n]=strtok(NULL, separator);
+                        
+                        Cmd_ExecuteString (va("dis %d", i));
+                        for(k=0; k<n; k++) {
+                            Cmd_ExecuteString (va("gw %d \"%s\"", i, weap[k]));
+                        }
+                        free(temp);
 
-int SV_CheckLocation( float x, float y , float r, int i ) {
-        playerState_t *ps;
-    ps = SV_GameClientNum(i);
-    if (ps->origin[0] > x-r &&
-        ps->origin[0] < x+r &&
-        ps->origin[1] > y-r &&
-        ps->origin[1] < y+r
-        ) {
-        return 1;
+						save_client_ps(cl);
+						cl->check_ps_change = qtrue;
+						cl->lastTeam = TEAM_RED;
+						
+                        // use first weapon, FIXME: put last weapon != KEY and DROPKEY
+                        ps->weapon = 0;
+                    }
+                }
+				// check if weapon is changed by the user at the respawn when shouldnt be forbidden to change
+				if (cl->check_ps_change == qtrue && same_team(cl)){
+					if (check_client_ps(cl)){
+						// FIXME: should check if the player dropped the weapons
+						load_client_ps(cl);
+					}
+				}else{
+					cl->check_ps_change = qfalse;
+				}
+				// firetime
+//				if (ps->weaponstate == 0) {
+//					cl->bool_firetime = qtrue;
+//				}
+//				if (cl->bool_firetime == qtrue) {
+//					set_firetime(cl, ps);
+//				}
+				
+				
+            }
+            
+            //********
+            // blue
+            //********
+            
+            if(team == TEAM_BLUE){
+                if(ps->pm_type != PM_NORMAL) continue;
+                // stamina
+                if(sv_blue_stamina->integer > 0){
+                    stamina = *((int *)((char*)(ps->stats) + 36)); // misured on 30000
+                    health = ps->stats[STAT_HEALTH]; // misured on 100
+                    
+                    if (sv_blue_stamina->integer == 1) {
+                        // set stamina always max
+                        *((int *)((char*)(ps->stats) + 36)) = health * 300;
+                    }
+                    
+                    if (sv_blue_stamina->integer == 2) {
+                        if (ps->velocity[0]==0 && ps->velocity[1]==0 && ps->velocity[2]==0){
+                            *((int *)((char*)(ps->stats) + 36)) = health * 300;
+                        }            
+                    }
+                    
+                }
+                
+                // walljumps
+                if(sv_blue_walljumps->integer == 1){
+                    ps->generic1 = 0;
+                }
+                
+                // weapons
+                if (cl->countRespawn != ps->persistant[PERS_SPAWN_COUNT]){
+                    cl->countRespawn = ps->persistant[PERS_SPAWN_COUNT]; 
+                    
+                    if (strcmp(sv_blue_weapons->string, "") != 0) {
+                        int     k,n=0;
+                        char    *blue_weap = sv_blue_weapons->string;
+                        char    *weap[20];    
+                        char    *temp=strdup(blue_weap);
+                        char    *separator = " ";
+                        
+                        weap[n]=strtok(temp, separator);
+                        while(weap[n] && n<4) weap[++n]=strtok(NULL, separator);
+                        
+                        Cmd_ExecuteString (va("dis %d", i));
+                        for(k=0; k<n; k++) {
+                            Cmd_ExecuteString (va("gw %d \"%s\"", i, weap[k]));
+                        }
+						free(temp);
+						
+						save_client_ps(cl);
+						cl->check_ps_change = qtrue;
+						cl->lastTeam = TEAM_BLUE;
+						// use first weapon, FIXME: put last weapon != KEY and DROPKEY
+						ps->weapon = 0;
+					}
+				}
+				// check if weapon is changed by the user at the respawn when shouldnt be forbidden to change
+				if (cl->check_ps_change == qtrue && same_team(cl)){
+					if (check_client_ps(cl)){
+						// FIXME: should check if the player dropped the weapons
+						load_client_ps(cl);
+					}
+				}else{
+					cl->check_ps_change = qfalse;
+				}
+            }
+            
+            // send to all colored names
+			if (sv.sendcolorednames == qtrue){
+				broadcastCS();
+				sv.sendcolorednames = qfalse;
+			}
+			
+            if(team == TEAM_RED){
+				if (sv_test->integer ==1){
+                
+				
+					// TEST STUFF
+            
+					Com_Printf("------------\n");
+					//Com_Printf("weapon %d\n", ps->weapon);
+					//Com_Printf("weaponstate %d\n", ps->weaponstate);
+					
+					            for (j=0; j<16; j++) {
+					                Com_Printf("ammo: %d\n", ps->ammo[j]);
+					            }
+
+					
+					if (ps->weaponstate==3){
+						// firing
+						//ps->weaponTime = 500;
+					}
+					if (ps->weaponstate != 0){
+						//Com_Printf("weaponstate %d\n", ps->weaponstate);
+					}
+					
+					
+					
+					//Q_strncpyz( client->lastCS, joinMessage, sizeof(joinMessage) );
+					//Com_Printf("STAT_PERSISTANT_POWERUP %d\n", ps->stats[STAT_PERSISTANT_POWERUP]);
+					
+					
+					
+					
+			// 0 = ready
+			// 1 = raising // dropping
+			// 2 = dropping
+			// 3 = firing
+            
+            //Com_Printf("stat_weapons: %d\n",ps->stats[STAT_WEAPONS]);
+//            for (j=0; j<16; j++) {
+//                Com_Printf("%d\n", ps->stats[j]);
+//            }
+            
+				}
+//				if (sv_test->integer ==2){
+//					Com_Printf("%d\n", ps->powerups[3]);
+//				}
+            }
+            
+            
+                
+            
+
+        
+            
+        }
     }
-        return -1;
+    
+}
+
+/*
+==================
+SV_FreshWeapons
+==================
+*/
+static void SV_FreshWeapons(void){
+    
 }
 
 /*
@@ -2144,119 +1687,8 @@ h = amount of health
 void SV_GivePlayerHealth(int clId, int h) {
     char    cmd[64];
     
-    Com_sprintf(cmd, sizeof(cmd), "gh %i \"+%i\"\n", clId, h); // needs qvm mod
-    Cmd_ExecuteString(cmd);
-}
-
-/*
-==================
-SV_GivePlayerStamina
-i = client id
-h = amount of stamina
-==================
-*/
-void SV_GivePlayerStamina(int clId, int s) {
-    char    cmd[64];
-    
-    Com_sprintf(cmd, sizeof(cmd), "gs %i \"+%i\"\n", clId, s); // needs qvm mod
-    Cmd_ExecuteString(cmd);
-}
-
-/*
-==================
-SV_MedicStation
-==================
-*/
-void SV_MedicStation( char* map, float x, float y, float r, float h )
-{
-	client_t *cl;
-	int i;
-	char cmd[64];
-	
-	static int NbMaxClients = 0;
-	static int *pInMedicStation = NULL;
-
-	if (Q_stricmp(sv_mapname->string, map))
-	{ // This MedicStation is not on this map
-		return;
-	}
-
-	if(sv_maxclients->integer != NbMaxClients) // Initialisation of pInMedicStation, should be executed just once
-	{
-		free(pInMedicStation);
-		pInMedicStation = NULL;
-		pInMedicStation = (int *)malloc(sv_maxclients->integer*sizeof(int));
-
-		if(pInMedicStation == NULL)
-			return;
-		else
-		{
-			int i = 0;
-			for(; i < sv_maxclients->integer; ++i)
-			{
-				cl = &svs.clients[i];
-				if(cl->state == CS_ACTIVE)
-					pInMedicStation[i] = SV_CheckLocation(x, y, r, i) == 1;
-			}
-		}
-
-		NbMaxClients = sv_maxclients->integer;
-	}
-	
-	for(i=0 ; i < sv_maxclients->integer ; i++)
-	{
-		cl = &svs.clients[i];
-		if(cl->state == CS_ACTIVE)
-		{
-			if(SV_CheckLocation(x, y, r, i) == 1) 
-			{ // is player in MedicZone?
-				SV_GivePlayerHealth(i, h); // Give him health
-				SV_GivePlayerStamina(i, h); // Give him stamina
-
-				if(pInMedicStation[i] == 0)
-				{
-					Com_sprintf(cmd, sizeof(cmd), "sendclientcommand %i cp \"%s\"\n",i ,"You^2 joined^7 the Medic Zone [^2+^7]" ); // needs qvm mod
-					Cmd_ExecuteString(cmd);
-					pInMedicStation[i] = 1;
-				}
-			}
-			else
-			{
-				if(pInMedicStation[i] == 1)
-				{
-					Com_sprintf(cmd, sizeof(cmd), "sendclientcommand %i cp \"%s\"\n",i ,"You ^1left ^7the Medic Zone" ); // needs qvm mod
-					Cmd_ExecuteString(cmd);
-					pInMedicStation[i] = 0;
-				}
-			}
-		}
-	}
-
-	return;
-}
-
-/*
-==================
-SV_TeleportStation
-==================
-*/
-void SV_TeleportStation( char* map, float x, float y, float r, float targetx, float targety, float targetz) {
-        client_t        *cl;
-        int i;
-        char            cmd[64];
-    
-        if (Q_stricmp(sv_mapname->string, map)) { // This TeleportStation is not on this map
-                return;
-        }
-    
-        for (i=0 ; i < sv_maxclients->integer ; i++) {
-                cl = &svs.clients[i];
-        if (cl->state == CS_ACTIVE) {
-            if (SV_CheckLocation(x, y, r, i) == 1) { // is player at TeleportStation
-                SV_TeleportPlayerToLocation(i, targetx, targety, targetz);
-            }
-        }
-    }
+    //Com_sprintf(cmd, sizeof(cmd), "gh %i \"+%i\"\n", clId, h); // needs qvm mod
+    //Cmd_ExecuteString(cmd);
 }
 
 /*
@@ -2280,12 +1712,13 @@ void SV_Frame( int msec ) {
 
 	if (!com_sv_running->integer)
 	{
-		// Running as a server, but no map loaded
-#ifdef DEDICATED
-		// Block until something interesting happens
-		Sys_Sleep(-1);
-#endif
-
+		if(com_dedicated->integer)
+		{
+			// Block indefinitely until something interesting happens
+			// on STDIN.
+			NET_Sleep(-1);
+		}
+		
 		return;
 	}
 
@@ -2374,67 +1807,23 @@ void SV_Frame( int msec ) {
 	if ( com_speeds->integer ) {
 		time_game = Sys_Milliseconds () - startTime;
 	}
-
+    if (sv_mod->integer > 0){
+        SV_ModPlayers();
+    }
+    
+    SV_FreshWeapons();
+    
 	// check timeouts
 	SV_CheckTimeouts();
+	
+	// check user info buffer thingy
+	SV_CheckClientUserinfoTimer();
 
 	// send messages back to the clients
 	SV_SendClientMessages();
 
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat();
-
-	if (sv_playerDBPassword->modified) {
-		Com_DPrintf("Detected playerdb server password change\n");
-		Q_strncpyz(svs.playerDatabasePassword, sv_playerDBPassword->string, sizeof(svs.playerDatabasePassword));
-		Cvar_Set(sv_playerDBPassword->name, "");
-		sv_playerDBPassword->modified = qfalse;
-	}
-
-	// These are very inexpensive operations; they don't impact CPU usage even if
-	// the playerdb system is turned off.
-	static int authFrameCount = 0;
-	static int authClientInx = 0;
-	client_t *cl;
-	authFrameCount++;
-	if (authFrameCount == 80) { // 4 seconds during normal gameplay (20 frames per sec)
-		authFrameCount = 0;
-		if (authClientInx >= sv_maxclients->integer) {
-			authClientInx = 0;
-		}
-		cl = &svs.clients[authClientInx];
-		if (cl->state >= CS_CONNECTED && // IPv6 not supported at this point.
-				(cl->netchan.remoteAddress.type == NA_IP /* || cl->netchan.remoteAddress.type == NA_IP6 */) &&
-				sv_playerDBBanIDs->string[0]) {
-			SV_ResolvePlayerDB();
-			if (svs.playerDatabaseAddress.type != NA_BAD && !Sys_IsLANAddress(cl->netchan.remoteAddress)) {
-				Com_DPrintf("Sending authorizePlayer packet to playerdb for client address %s\n",
-					NET_AdrToString(cl->netchan.remoteAddress));
-				NET_OutOfBandPrint(NS_SERVER,
-					svs.playerDatabaseAddress,
-					"playerDBRequest\n%s\nauthorizePlayer:%08x\n%s\n%s\n",
-					svs.playerDatabasePassword,
-					0x80000000 | (cl->challenge),
-					sv_playerDBBanIDs->string,
-					NET_AdrToString(cl->netchan.remoteAddress));
-			}
-		}
-		authClientInx++;
-	}
-
-    if (sv_MedicStation->integer > 0 && (Q_stricmp("4.1",Cvar_VariableString("g_modversion")))) { // dont run if g_modversion is 4.1
-        // example medic stations
-        // they are hardcoded
-        // FIXME: move cfgs to file?
-        // may cause lags?
-        // FIXME: find a better spot to bind this?
-        SV_MedicStation( "ut4_abbey",50,1500,50,1 );
-        SV_MedicStation( "ut4_sanc",-64,544,50,1 );
-        SV_MedicStation( "ut4_sanc",3936,128,50,1 );
-        SV_MedicStation( "ut4_turnpike",1572,176,50,1 );
-        SV_MedicStation( "ut4_turnpike",-596,-1640,50,1 );
-        SV_MedicStation( "Cube02",-5,29,709,1 );
-}
 }
 
 //============================================================================

@@ -205,7 +205,7 @@ static	void R_LoadLightmaps( lump_t *l ) {
 			}
 		}
 		tr.lightmaps[i] = R_CreateImage( va("*lightmap%d",i), image, 
-			LIGHTMAP_SIZE, LIGHTMAP_SIZE, qfalse, qfalse, GL_CLAMP_TO_EDGE );
+			LIGHTMAP_SIZE, LIGHTMAP_SIZE, qfalse, qfalse, GL_CLAMP );
 	}
 
 	if ( r_lightmap->integer == 2 )	{
@@ -1321,9 +1321,6 @@ static	void R_LoadSubmodels( lump_t *l ) {
 		model = R_AllocModel();
 
 		assert( model != NULL );			// this should never happen
-		if ( model == NULL ) {
-			ri.Error(ERR_DROP, "R_LoadSubmodels: R_AllocModel() failed");
-		}
 
 		model->type = MOD_BRUSH;
 		model->bmodel = out;
@@ -1795,10 +1792,7 @@ Called directly from cgame
 void RE_LoadWorldMap( const char *name ) {
 	int			i;
 	dheader_t	*header;
-	union {
-		byte *b;
-		void *v;
-	} buffer;
+	byte		*buffer;
 	byte		*startMarker;
 
 	if ( tr.worldMapLoaded ) {
@@ -1816,8 +1810,8 @@ void RE_LoadWorldMap( const char *name ) {
 	tr.worldMapLoaded = qtrue;
 
 	// load it
-    ri.FS_ReadFile( name, &buffer.v );
-	if ( !buffer.b ) {
+    ri.FS_ReadFile( name, (void **)&buffer );
+	if ( !buffer ) {
 		ri.Error (ERR_DROP, "RE_LoadWorldMap: %s not found", name);
 	}
 
@@ -1834,7 +1828,7 @@ void RE_LoadWorldMap( const char *name ) {
 	startMarker = ri.Hunk_Alloc(0, h_low);
 	c_gridVerts = 0;
 
-	header = (dheader_t *)buffer.b;
+	header = (dheader_t *)buffer;
 	fileBase = (byte *)header;
 
 	i = LittleLong (header->version);
@@ -1866,6 +1860,6 @@ void RE_LoadWorldMap( const char *name ) {
 	// only set tr.world now that we know the entire level has loaded properly
 	tr.world = &s_worldData;
 
-    ri.FS_FreeFile( buffer.v );
+    ri.FS_FreeFile( buffer );
 }
 

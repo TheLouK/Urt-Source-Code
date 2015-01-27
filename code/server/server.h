@@ -33,17 +33,43 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	MAX_ENT_CLUSTERS	16
 
-#ifdef USE_VOIP
-typedef struct voipServerPacket_s
-{
-	int generation;
-	int sequence;
-	int frames;
-	int len;
-	int sender;
-	byte data[1024];
-} voipServerPacket_t;
-#endif
+// weapons
+int     KEY;
+
+int		DROP;
+
+int     KNIFE;
+int     BERETTA;
+int     DE;
+int     SPAS;
+int     MP5;
+int     UMP;
+int     HK69;
+int     LR300;
+int     G36;
+int     PSG;
+int     HE;
+int		FLASH;
+int     SMOKE;
+int     SR8;
+int     AK;
+int		BOMB;
+int     NEGEV;
+int     M4;
+int		GLOCK;
+int		COLT;
+int		MAC11;
+
+// items
+#define NOITEM		256 
+
+#define VEST		273
+#define NGV			274
+#define MEDKIT		275
+#define SILENCER	276
+#define LASER		277
+#define HELMET		278
+#define AMMO		279
 
 typedef struct svEntity_s {
 	struct worldSector_s *worldSector;
@@ -91,19 +117,9 @@ typedef struct {
 
 	int				restartTime;
 	int				time;
-
-	int		lastCallvoteCyclemapTime;
-	qboolean	inCallvoteCyclemap;
-	////////////////////////////////////////////////////////
-	// separator for cyclemaplimit.patch and incognito.patch
-	////////////////////////////////////////////////////////
-	qboolean			incognitoJoinSpec;
-	/////////////////////////////////////////////////////////
-	// separator for incognito.patch and specchatglobal.patch
-	/////////////////////////////////////////////////////////
-
-	char				lastSpecChat[512];
-
+	
+	qboolean		incognitoJoinSpec;
+	qboolean		sendcolorednames;
 } server_t;
 
 
@@ -138,12 +154,10 @@ typedef struct netchan_buffer_s {
 	struct netchan_buffer_s *next;
 } netchan_buffer_t;
 
-#define	MAX_LOCATION_STRING	96
-
 typedef struct client_s {
 	clientState_t	state;
 	char			userinfo[MAX_INFO_STRING];		// name, etc
-	int			lastUserinfoChangeTime;
+	char			userinfobuffer[MAX_INFO_STRING]; //used for buffering of user info
 
 	char			reliableCommands[MAX_RELIABLE_COMMANDS][MAX_STRING_CHARS];
 	int				reliableSequence;		// last added reliable message, not necesarily sent or acknowledged yet
@@ -175,7 +189,8 @@ typedef struct client_s {
 	int				downloadSendTime;	// time we last got an ack from the client
 
 	int				deltaMessage;		// frame last client usercmd message
-	int				lastReliableTime;
+	int				nextReliableTime;	// svs.time when another reliable command will be allowed
+	int				nextReliableUserTime; // svs.time when another userinfo change will be allowed
 	int				lastPacketTime;		// svs.time when packet was last received
 	int				lastConnectTime;	// svs.time when connection started
 	int				nextSnapshotTime;	// send another snapshot when svs.time >= nextSnapshotTime
@@ -195,48 +210,33 @@ typedef struct client_s {
 	netchan_buffer_t *netchan_start_queue;
 	netchan_buffer_t **netchan_end_queue;
 
-#ifdef USE_VOIP
-	qboolean hasVoip;
-	qboolean muteAllVoip;
-	qboolean ignoreVoipFromClient[MAX_CLIENTS];
-	voipServerPacket_t voipPacket[64]; // !!! FIXME: WAY too much memory!
-	int queuedVoipPackets;
-#endif
-
+	qboolean	demo_recording;	// are we currently recording this client?
+	fileHandle_t	demo_file;	// the file we are writing the demo to
+	qboolean	demo_waiting;	// are we still waiting for the first non-delta frame?
+	int		demo_backoff;	// how many packets (-1 actually) between non-delta frames?
+	int		demo_deltas;	// how many delta frames did we let through so far?
+	
 	int				oldServerTime;
-	qboolean			csUpdated[MAX_CONFIGSTRINGS+1];
-	qboolean		weapongivenforpistol[11];
-	qboolean		gunitems[5];
-	// Change char to int if UrT 4.2
-	char 			flagweapon;
-	int				money;
+	qboolean		csUpdated[MAX_CONFIGSTRINGS+1];	
+	int             numcmds;    // number of client commands so far (in this time period), for sv_floodprotect
 
-	qboolean		muted;
+    // ********
+    // MOD
+	// ********
+	int				lastTeam;
+    qboolean        muted;
+	qboolean		bool_firetime;
+    int             countRespawn;
+	
+	//int             ps[16];
+	qboolean		check_ps_change;
 
-    // MaJ -- A place to store what type of mod the user is. 0 for none, otherwise, (mod slot number + 1)
-    int mod_slot;
-
-        vec3_t          savedPosition;
-        qboolean        positionIsSaved;
-        int             lastLoadPositionTime;
-        qboolean        allowGoto;
-        int             lastGotoTime;
-
-	///////////////////////////////////////////////
-	// separator for mutefix.patch and ip2loc.patch
-	///////////////////////////////////////////////
-	char				location[MAX_LOCATION_STRING];
-	int				ip2locChallenge;
-	////////////////////////////////////////////
-	// separator for ip2loc.patch and goto.patch
-	////////////////////////////////////////////
-
-    qboolean    demo_recording; // are we currently recording this client?
-        fileHandle_t    demo_file;      // the file we are writing the demo to
-        qboolean        demo_waiting;   // are we still waiting for the first non-delta frame?
-        int             demo_backoff;   // how many packets (-1 actually) between non-delta frames?
-        int             demo_deltas;    // how many delta frames did we let through so far?
-    
+    char            cname[MAX_NAME_LENGTH];
+	char			lastCS[MAX_STRING_CHARS];
+	
+	int				weaponKey;
+	int				weaponData[16];
+	int				itemData[6];
 } client_t;
 
 //=============================================================================
@@ -249,20 +249,15 @@ typedef struct client_s {
 
 #define	AUTHORIZE_TIMEOUT	5000
 
-#define	PLAYERDB_CHALLENGEAUTH_TIMEOUT	5000
-
 typedef struct {
 	netadr_t	adr;
 	int			challenge;
-	int			challengePing;
-	int			time;				// time the adr was first seen in getchallenge
-	int			pingTime;			// time the first challenge response was sent to client
+	int 		challengePing;
+	int			time;				// time the last packet was sent to the autherize server
+	int			pingTime;			// time the challenge response was sent to client
+	int			firstTime;			// time the adr was first used, for authorize timeout checks
+	qboolean    wasrefused;
 	qboolean	connected;
-	int		authChallengesSent;
-	qboolean	permabanned;
-	////////////////////////////
-	// marker for playerdb.patch
-	////////////////////////////
 } challenge_t;
 
 typedef struct {
@@ -270,36 +265,12 @@ typedef struct {
 	int		time;
 } receipt_t;
 
-typedef struct {
-	netadr_t	adr;
-	int		time;
-	int		count;
-	qboolean	flood;
-} floodBan_t;
-
 // MAX_INFO_RECEIPTS is the maximum number of getstatus+getinfo responses that we send
 // in a two second time period.
 #define MAX_INFO_RECEIPTS	48
 
-#define MAX_INFO_FLOOD_BANS	36
-
-#define MAX_CONNECTS	256
-
-///////////////////////////////////////////////////////////
-// separator for connectlimit.patch and reconnectwait.patch
-///////////////////////////////////////////////////////////
-
-#define MAX_DROPS	256
-
-typedef struct {
-	netadr_t	adr;
-	int		time;
-	int		waitFactor;
-} drop_t;
-
 #define	MAX_MASTERS	8				// max recipients for heartbeat packets
 
-#define	MAX_PLAYERDB_PASSWORD_STRING	32
 
 // this structure will be cleared only when the game dll changes
 typedef struct {
@@ -315,57 +286,38 @@ typedef struct {
 	entityState_t	*snapshotEntities;		// [numSnapshotEntities]
 	int			nextHeartbeatTime;
 	challenge_t	challenges[MAX_CHALLENGES];	// to prevent invalid IPs from connecting
-	receipt_t	infoReceipts[MAX_INFO_RECEIPTS];	// prevent getinfo/getstatus flood and DRDoS attacks
-	floodBan_t	infoFloodBans[MAX_INFO_FLOOD_BANS];
-	receipt_t	connects[MAX_CONNECTS];
-	///////////////////////////////////////////////////////////
-	// separator for connectlimit.patch and reconnectwait.patch
-	///////////////////////////////////////////////////////////
-	drop_t		drops[MAX_DROPS];
+	receipt_t	infoReceipts[MAX_INFO_RECEIPTS];
 	netadr_t	redirectAddress;			// for rcon return messages
 
 	netadr_t	authorizeAddress;			// for rcon return messages
-
-	netadr_t	ip2locAddress;				// holds resolution of sv_ip2locHost
-
-	////////////////////////////////////////////////
-	// separator for ip2loc.patch and playerdb.patch
-	////////////////////////////////////////////////
-	netadr_t	playerDatabaseAddress;			// holds resolution of sv_playerDBHost
-
-	char		playerDatabasePassword[MAX_PLAYERDB_PASSWORD_STRING];
-								// holds value of sv_playerDBPassword so that
-								// we can always set sv_playerDBPassword to the
-								// empty string, we don't want people with rcon
-								// knowing this sensitive information
 } serverStatic_t;
 
-#define SERVER_MAXUSERLOCS 8192
-typedef struct
-{
-        char map[MAX_QPATH];
-        char guid[MAX_CVAR_VALUE_STRING];
-        vec3_t pos;
-} userLoc_t;
 
-// [Money] struct for client
-typedef struct
-{
-        char guid[MAX_CVAR_VALUE_STRING];
-        int money;
-} userMoney_t;
+// The value below is how many extra characters we reserve for every instance of '$' in a
+// ut_radio, say, or similar client command.  Some jump maps have very long $location's.
+// On these maps, it may be possible to crash the server if a carefully-crafted
+// client command is sent.  The constant below may require further tweaking.  For example,
+// a text of "$location" would have a total computed length of 25, because "$location" has
+// 9 characters, and we increment that by 16 for the '$'.
+#define STRLEN_INCREMENT_PER_DOLLAR_VAR 16
 
-#define SERVER_MAXBANS	1024
-#define SERVER_BANFILE	"serverbans.dat"
-// Structure for managing bans
-typedef struct
-{
-	netadr_t ip;
-	// For a CIDR-Notation type suffix
-	int subnet;
-	
-	qboolean isexception;
-} serverBan_t;
+// Don't allow more than this many dollared-strings (e.g. $location) in a client command
+// such as ut_radio and say.  Keep this value low for safety, in case some things like
+// $location expand to very large strings in some maps.  There is really no reason to have
+// more than 6 dollar vars (such as $weapon or $location) in things you tell other people.
+#define MAX_DOLLAR_VARS 6
+
+// When a radio text (as in "ut_radio 1 1 text") is sent, weird things start to happen
+// when the text gets to be greater than 118 in length.  When the text is really large the
+// server will crash.  There is an in-between gray zone above 118, but I don't really want
+// to go there.  This is the maximum length of radio text that can be sent, taking into
+// account increments due to presence of '$'.
+#define MAX_RADIO_STRLEN 118
+
+// Don't allow more than this text length in a command such as say.  I pulled this
+// value out of my ass because I don't really know exactly when problems start to happen.
+// This value takes into account increments due to the presence of '$'.
+#define MAX_SAY_STRLEN 256
 
 //=============================================================================
 
@@ -374,12 +326,13 @@ extern	server_t		sv;					// cleared each map
 extern	vm_t			*gvm;				// game virtual machine
 
 #define	MAX_MASTER_SERVERS	5
-#define MAX_MOD_LEVELS 20
 
 extern	cvar_t	*sv_fps;
 extern	cvar_t	*sv_timeout;
 extern	cvar_t	*sv_zombietime;
 extern	cvar_t	*sv_rconPassword;
+extern	cvar_t	*sv_rconRecoveryPassword;
+extern	cvar_t	*sv_rconAllowedSpamIP;
 extern	cvar_t	*sv_privatePassword;
 extern	cvar_t	*sv_allowDownload;
 extern	cvar_t	*sv_maxclients;
@@ -400,113 +353,96 @@ extern	cvar_t	*sv_minPing;
 extern	cvar_t	*sv_maxPing;
 extern	cvar_t	*sv_gametype;
 extern	cvar_t	*sv_pure;
+extern	cvar_t	*sv_newpurelist;
 extern	cvar_t	*sv_floodProtect;
 extern	cvar_t	*sv_lanForceRate;
 extern	cvar_t	*sv_strictAuth;
-
-extern	cvar_t	*sv_userinfoFloodProtect;
-
-extern	cvar_t	*sv_block1337;
-
-extern	cvar_t	*sv_callvoteRequiredConnectTime;
-
-extern	cvar_t	*sv_limitConnectPacketsPerIP;
-extern	cvar_t	*sv_maxClientsPerIP;
-
-extern	cvar_t	*sv_callvoteCyclemapWaitTime;
-
-extern	cvar_t	*sv_forceAutojoin;
-
-extern	cvar_t	*sv_ip2locEnable;
-extern	cvar_t	*sv_ip2locHost;
-extern	cvar_t	*sv_ip2locPassword;
+extern	cvar_t	*sv_clientsPerIp;
 
 extern	cvar_t	*sv_demonotice;
-extern	cvar_t	*sv_democommands;
 
-extern	cvar_t	*sv_loadOnlyNeededPaks;
+extern  cvar_t  *sv_sayprefix;
+extern  cvar_t  *sv_tellprefix;
+extern  cvar_t  *sv_demofolder;
+
+extern  cvar_t  *sv_hideCmd;
+extern  cvar_t  *sv_hideCmdList;
+extern  cvar_t  *sv_noFallDamage;
+extern  cvar_t  *sv_mod;
+extern  cvar_t  *sv_free_stamina;
+extern  cvar_t  *sv_free_walljumps;
+extern  cvar_t  *sv_free_colorScore;
+extern  cvar_t  *sv_free_weapons;
+extern  cvar_t  *sv_red_stamina;
+extern  cvar_t  *sv_red_walljumps;
+extern  cvar_t  *sv_red_colorScore;
+extern  cvar_t  *sv_red_weapons;
+extern  cvar_t  *sv_blue_stamina;
+extern  cvar_t  *sv_blue_walljumps;
+extern  cvar_t  *sv_blue_colorScore;
+extern  cvar_t  *sv_blue_weapons;
+extern	cvar_t	*sv_disableRadio;
+extern  cvar_t	*sv_callvoteRequiredConnectTime;
+extern	cvar_t	*sv_coloredNames;
+extern	cvar_t	*sv_disableServerCommand;
+extern	cvar_t	*sv_forceAutojoin;
+extern	cvar_t	*sv_totalMute;
+extern	cvar_t	*sv_logRconArgs;
 
 extern	cvar_t	*sv_logRconArgs;
 
-extern	cvar_t	*sv_sanitizeNames;
+extern	cvar_t	*sv_test;
 
-extern	cvar_t	*sv_noKevlar;
+// weapons
+extern  cvar_t  *sv_knife_clips;
+extern  cvar_t  *sv_knife_bullets;
+extern  cvar_t  *sv_knife_slash_firetime;
+extern  cvar_t  *sv_knife_throw_firetime;
+extern  cvar_t  *sv_beretta_clips;
+extern  cvar_t  *sv_beretta_bullets;
+extern  cvar_t  *sv_beretta_firetime;
+extern  cvar_t  *sv_de_clips;
+extern  cvar_t  *sv_de_bullets;
+extern  cvar_t  *sv_spas_clips;
+extern  cvar_t  *sv_spas_bullets;
+extern  cvar_t  *sv_mp5_clips;
+extern  cvar_t  *sv_mp5_bullets;
+extern  cvar_t  *sv_ump_clips;
+extern  cvar_t  *sv_ump_bullets;
+extern  cvar_t  *sv_hk69_clips;
+extern  cvar_t  *sv_hk69_bullets;
+extern  cvar_t  *sv_lr300_clips;
+extern  cvar_t  *sv_lr300_bullets;
+extern  cvar_t  *sv_g36_clips;
+extern  cvar_t  *sv_g36_bullets;
+extern  cvar_t  *sv_psg_clips;
+extern  cvar_t  *sv_psg_bullets;
+extern  cvar_t  *sv_he_clips;
+extern  cvar_t  *sv_he_bullets;
+extern  cvar_t  *sv_flash_clips;
+extern  cvar_t  *sv_flash_bullets;
+extern  cvar_t  *sv_smoke_clips;
+extern  cvar_t  *sv_smoke_bullets;
+extern  cvar_t  *sv_sr8_clips;
+extern  cvar_t  *sv_sr8_bullets;
+extern  cvar_t  *sv_ak_clips;
+extern  cvar_t  *sv_ak_bullets;
+extern  cvar_t  *sv_bomb_clips;
+extern  cvar_t  *sv_bomb_bullets;
+extern  cvar_t  *sv_negev_clips;
+extern  cvar_t  *sv_negev_bullets;
+extern  cvar_t  *sv_m4_clips;
+extern  cvar_t  *sv_m4_bullets;
+extern  cvar_t  *sv_glock_clips;
+extern  cvar_t  *sv_glock_bullets;
+extern  cvar_t  *sv_colt_clips;
+extern  cvar_t  *sv_colt_bullets;
+extern  cvar_t  *sv_mac11_clips;
+extern  cvar_t  *sv_mac11_bullets;
 
-extern	cvar_t	*sv_requireValidGuid;
-extern	cvar_t	*sv_playerDBHost;
-extern	cvar_t	*sv_playerDBPassword;
-extern	cvar_t	*sv_playerDBUserInfo;
-extern	cvar_t	*sv_playerDBBanIDs;
-extern	cvar_t	*sv_permaBanBypass;
-
-extern	cvar_t	*sv_disableRadio;
-
-extern	cvar_t	*sv_reconnectWaitTime;
-
-extern	cvar_t	*sv_specChatGlobal;
-
-extern	cvar_t	*sv_tellprefix;
-extern	cvar_t	*sv_sayprefix;
-
-extern	cvar_t	*sv_SpecJoin;
-extern	cvar_t	*sv_HidePm;
-extern	cvar_t	*sv_Guns;
-extern	cvar_t	*sv_Money;
-extern cvar_t *sv_hideBotCmds;
-extern cvar_t *sv_logPath;
-
-extern	cvar_t	*sv_MedicStation;
-
-// String Replace
-extern  cvar_t  *sv_CensoredStrings;
-extern  cvar_t  *sv_CustomStrings;
-extern  cvar_t  *str_enteredthegame;
-extern  cvar_t  *str_joinedtheredteam;
-extern  cvar_t  *str_joinedtheblueteam;
-extern  cvar_t  *str_joinedthespectators;
-extern  cvar_t  *str_joinedthebattle;
-extern  cvar_t  *str_capturedblueflag;
-extern  cvar_t  *str_capturedredflag;
-extern  cvar_t  *str_hastakentheblueflag;
-extern  cvar_t  *str_hastakentheredflag;
-extern  cvar_t  *str_droppedtheredflag;
-extern  cvar_t  *str_droppedtheblueflag;
-extern  cvar_t  *str_returnedtheredflag;
-extern  cvar_t  *str_returnedtheblueflag;
-extern  cvar_t  *str_theredflaghasreturned2;
-extern  cvar_t  *str_theredflaghasreturned;
-extern  cvar_t  *str_theblueflaghasreturned2;
-extern  cvar_t  *str_theblueflaghasreturned;
-extern  cvar_t  *str_wasslappedbytheadmin;
-extern  cvar_t  *str_youvebeenslapped;
-extern  cvar_t  *str_blueteamwins;
-extern  cvar_t  *str_redteamwins;
-
-extern  cvar_t  *sv_mutewords;
-
-extern cvar_t *sv_moderatorenable;  // MaJ - 0 to disable all new mod features, 1 to enable them.
-extern cvar_t *sv_moderatorremoteenable;    // MaJ - 1 to allow moderator commands to be issued from out of game.
-extern cvar_t *sv_moderatorpass[MAX_MOD_LEVELS];    // MaJ - Mod passwords for each mod level. (empty string for disabled)
-extern cvar_t *sv_moderatorcommands[MAX_MOD_LEVELS];    // MaJ - Commands each ref is allowed to execute (separated by ,)
-
-//Save, load, goto
-extern  cvar_t  *sv_allowGoto;
-extern  cvar_t  *sv_gotoWaitTime;
-extern  cvar_t  *sv_allowLoadPosition;
-extern  cvar_t  *sv_loadPositionWaitTime;
-
-extern  cvar_t  *sv_TeleportStation;
-
-extern	cvar_t	*sv_attractplayers;
-
-extern userLoc_t userLocs[SERVER_MAXUSERLOCS];
-extern int userLocCount;
-
-extern	serverBan_t serverBans[SERVER_MAXBANS];
-extern	int serverBansCount;
-
-#ifdef USE_VOIP
-extern	cvar_t	*sv_voip;
+#ifdef USE_AUTH
+extern	cvar_t	*sv_authServerIP;
+extern  cvar_t  *sv_auth_engine;
 #endif
 
 //===========================================================
@@ -516,6 +452,7 @@ extern	cvar_t	*sv_voip;
 //
 void SV_FinalMessage (char *message);
 void QDECL SV_SendServerCommand( client_t *cl, const char *fmt, ...);
+void QDECL SV_SendMyCommand( client_t *cl, const char *fmt, ...);
 
 
 void SV_AddOperatorCommands (void);
@@ -541,7 +478,6 @@ void SV_GetUserinfo( int index, char *buffer, int bufferSize );
 void SV_ChangeMaxClients( void );
 void SV_SpawnServer( char *server, qboolean killBots );
 
-void SV_ResolvePlayerDB( void );
 
 
 //
@@ -551,37 +487,29 @@ void SV_GetChallenge( netadr_t from );
 
 void SV_DirectConnect( netadr_t from );
 
-#ifndef STANDALONE
 void SV_AuthorizeIpPacket( netadr_t from );
-#endif
 
 void SV_ExecuteClientMessage( client_t *cl, msg_t *msg );
-char *SV_UserinfoChanged( client_t *cl );
+void SV_UserinfoChanged( client_t *cl );
 
 void SV_ClientEnterWorld( client_t *client, usercmd_t *cmd );
 void SV_DropClient( client_t *drop, const char *reason );
+
+#ifdef USE_AUTH
+void SV_Auth_DropClient( client_t *drop, const char *reason, const char *message );
+#endif
 
 void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK );
 void SV_ClientThink (client_t *cl, usercmd_t *cmd);
 
 void SV_WriteDownloadToClient( client_t *cl , msg_t *msg );
 
-#ifdef USE_VOIP
-void SV_WriteVoipToClient( client_t *cl, msg_t *msg );
-#endif
-
-void SV_RconBuy_f (client_t *cl, char *wpn, char *status);
-void SV_ReadUserLocations(void);
-void SV_WriteUserLocations(void);
-
-int SVC_GetModSlotByPassword(char *password);
-qboolean SV_ModCommandAllowed(char *allowed, char *command);
-
 //
 // sv_ccmds.c
 //
 void SV_Heartbeat_f( void );
 void SVD_WriteDemoFile(const client_t*, const msg_t*);
+client_t *SV_GetPlayerByHandle(void);
 
 //
 // sv_snapshot.c
@@ -592,6 +520,8 @@ void SV_WriteFrameToClient (client_t *client, msg_t *msg);
 void SV_SendMessageToClient( msg_t *msg, client_t *client );
 void SV_SendClientMessages( void );
 void SV_SendClientSnapshot( client_t *client );
+void SV_CheckClientUserinfoTimer( void );
+void SV_UpdateUserinfo_f( client_t *cl );
 
 //
 // sv_game.c

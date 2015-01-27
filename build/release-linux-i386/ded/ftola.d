@@ -1,2 +1,2 @@
-build/release-linux-i386/ded/ftola.o: code/asm/ftola.s code/asm/qasm.h \
- code/asm/../qcommon/q_platform.h
+build/release-linux-i386/ded/ftola.o: code/unix/ftola.s code/unix/qasm.h \
+ code/unix/../qcommon/q_platform.h

@@ -103,7 +103,7 @@ typedef struct image_s {
 
 	qboolean	mipmap;
 	qboolean	allowPicmip;
-	int			wrapClampMode;		// GL_CLAMP_TO_EDGE or GL_REPEAT
+	int			wrapClampMode;		// GL_CLAMP or GL_REPEAT
 
 	struct image_s*	next;
 } image_t;
@@ -322,12 +322,10 @@ typedef struct {
 
 struct shaderCommands_s;
 
-// any change in the LIGHTMAP_* defines here MUST be reflected in
-// R_FindShader() in tr_bsp.c
-#define LIGHTMAP_2D         -4	// shader is for 2D rendering
-#define LIGHTMAP_BY_VERTEX  -3	// pre-lit triangle models
-#define LIGHTMAP_WHITEIMAGE -2
-#define LIGHTMAP_NONE       -1
+#define LIGHTMAP_2D			-4		// shader is for 2D rendering
+#define LIGHTMAP_BY_VERTEX	-3		// pre-lit triangle models
+#define LIGHTMAP_WHITEIMAGE	-2
+#define	LIGHTMAP_NONE		-1
 
 typedef enum {
 	CT_FRONT_SIDED,
@@ -435,8 +433,6 @@ typedef struct {
 	vec3_t		vieworg;
 	vec3_t		viewaxis[3];		// transformation matrix
 
-	stereoFrame_t	stereoFrame;
-
 	int			time;				// time in milliseconds for shader effects and other time dependent rendering issues
 	int			rdflags;			// RDF_NOWORLDMODEL, etc
 
@@ -508,7 +504,6 @@ typedef struct {
 	cplane_t	frustum[4];
 	vec3_t		visBounds[2];
 	float		zFar;
-	stereoFrame_t	stereoFrame;
 } viewParms_t;
 
 
@@ -978,10 +973,9 @@ extern glstate_t	glState;		// outside of TR since it shouldn't be cleared during
 // These two variables should live inside glConfig but can't because of compatibility issues to the original ID vms.
 // If you release a stand-alone game and your mod uses tr_types.h from this build you can safely move them to
 // the glconfig_t struct.
-extern qboolean  textureFilterAnisotropic;
-extern int       maxAnisotropy;
-extern float     displayAspect;
-
+extern qboolean		textureFilterAnisotropic;
+extern int		maxAnisotropy;
+                
 
 //
 // cvars
@@ -1001,12 +995,11 @@ extern cvar_t	*r_verbose;				// used for verbose debug spew
 extern cvar_t	*r_ignoreFastPath;		// allows us to ignore our Tess fast paths
 
 extern cvar_t	*r_znear;				// near Z clip plane
-extern cvar_t	*r_zproj;				// z distance of projection plane
-extern cvar_t	*r_stereoSeparation;			// separation of cameras for stereo rendering
 
 extern cvar_t	*r_stencilbits;			// number of desired stencil bits
 extern cvar_t	*r_depthbits;			// number of desired depth bits
 extern cvar_t	*r_colorbits;			// number of desired color bits, only relevant for fullscreen
+extern cvar_t	*r_stereo;				// desired pixelformat stereo flag
 extern cvar_t	*r_texturebits;			// number of desired texture bits
 										// 0 = use framebuffer depth
 										// 16 = use 16-bit textures
@@ -1042,12 +1035,15 @@ extern	cvar_t	*r_showcluster;
 
 extern cvar_t	*r_mode;				// video mode
 extern cvar_t	*r_fullscreen;
+extern cvar_t	*r_minimize;
 extern cvar_t	*r_gamma;
 extern cvar_t	*r_displayRefresh;		// optional display refresh option
 extern cvar_t	*r_ignorehwgamma;		// overrides hardware gamma capabilities
 
 extern cvar_t	*r_allowExtensions;				// global enable/disable of OpenGL extensions
 extern cvar_t	*r_ext_compressed_textures;		// these control use of specific extensions
+extern cvar_t	*r_ext_gamma_control;
+extern cvar_t	*r_ext_texenv_op;
 extern cvar_t	*r_ext_multitexture;
 extern cvar_t	*r_ext_compiled_vertex_array;
 extern cvar_t	*r_ext_texture_env_add;
@@ -1062,6 +1058,7 @@ extern	cvar_t	*r_colorMipLevels;				// development aid to see texture mip usage
 extern	cvar_t	*r_picmip;						// controls picmip values
 extern	cvar_t	*r_finish;
 extern	cvar_t	*r_drawBuffer;
+extern  cvar_t  *r_glDriver;
 extern	cvar_t	*r_swapInterval;
 extern	cvar_t	*r_textureMode;
 extern	cvar_t	*r_offsetFactor;
@@ -1093,11 +1090,6 @@ extern	cvar_t	*r_smp;
 extern	cvar_t	*r_showSmp;
 extern	cvar_t	*r_skipBackEnd;
 
-extern	cvar_t	*r_stereoEnabled;
-extern	cvar_t	*r_anaglyphMode;
-
-extern	cvar_t	*r_greyscale;
-
 extern	cvar_t	*r_ignoreGLErrors;
 
 extern	cvar_t	*r_overBrightBits;
@@ -1111,6 +1103,8 @@ extern	cvar_t	*r_debugSort;
 
 extern	cvar_t	*r_printShaders;
 extern	cvar_t	*r_saveFontData;
+
+extern	cvar_t	*r_GLlibCoolDownMsec;
 
 //====================================================================
 
@@ -1144,7 +1138,6 @@ int R_CullLocalBox (vec3_t bounds[2]);
 int R_CullPointAndRadius( vec3_t origin, float radius );
 int R_CullLocalPointAndRadius( vec3_t origin, float radius );
 
-void R_SetupProjection(viewParms_t *dest, float zProj, qboolean computeFrustum);
 void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms, orientationr_t *or );
 
 /*
@@ -1492,20 +1485,6 @@ void RB_MDRSurfaceAnim( md4Surface_t *surface );
 
 /*
 =============================================================
-
-IMAGE LOADERS
-
-=============================================================
-*/
-
-void R_LoadBMP( const char *name, byte **pic, int *width, int *height );
-void R_LoadJPG( const char *name, byte **pic, int *width, int *height );
-void R_LoadPCX( const char *name, byte **pic, int *width, int *height );
-void R_LoadPNG( const char *name, byte **pic, int *width, int *height );
-void R_LoadTGA( const char *name, byte **pic, int *width, int *height );
-
-/*
-=============================================================
 =============================================================
 */
 void	R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
@@ -1623,18 +1602,6 @@ typedef struct {
 	qboolean			motionJpeg;
 } videoFrameCommand_t;
 
-typedef struct
-{
-	int commandId;
-
-	GLboolean rgba[4];
-} colorMaskCommand_t;
-
-typedef struct
-{
-	int commandId;
-} clearDepthCommand_t;
-
 typedef enum {
 	RC_END_OF_LIST,
 	RC_SET_COLOR,
@@ -1643,9 +1610,7 @@ typedef enum {
 	RC_DRAW_BUFFER,
 	RC_SWAP_BUFFERS,
 	RC_SCREENSHOT,
-	RC_VIDEOFRAME,
-	RC_COLORMASK,
-	RC_CLEARDEPTH
+	RC_VIDEOFRAME
 } renderCommand_t;
 
 

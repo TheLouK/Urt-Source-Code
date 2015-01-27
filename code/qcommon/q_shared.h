@@ -26,25 +26,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
-#ifdef STANDALONE
-  #define PRODUCT_NAME			"iofoo3"
-  #define BASEGAME			"foobar"
-  #define CLIENT_WINDOW_TITLE     	"changeme"
-  #define CLIENT_WINDOW_MIN_TITLE 	"changeme2"
-  #define GAMENAME_FOR_MASTER		"iofoo3"	// must NOT contain whitespaces
-#else
-  #define PRODUCT_NAME			"ioq3"
-  #define BASEGAME			"baseq3"
-  #define CLIENT_WINDOW_TITLE     	"ioquake3"
-  #define CLIENT_WINDOW_MIN_TITLE 	"ioq3"
-  #define GAMENAME_FOR_MASTER		"Quake3Arena"
-#endif
 
-#ifdef _MSC_VER
-  #define PRODUCT_VERSION "1.35"
-#endif
+//#define Q3_VERSION            "ioQ3 1.35 urt 4.2.023"
+#define Q3_VERSION            "vega[MOD] v0.6^7"
+//#define Q3_VERSION            "^3:^2{^7Per^5}^3: ^5[^7MOD^5]^7"
 
-#define Q3_VERSION PRODUCT_NAME " " PRODUCT_VERSION
+#ifndef SVN_VERSION
+  #define SVN_VERSION Q3_VERSION
+#endif
+#define CLIENT_WINDOW_TITLE   "Quake3-UrT"
+#define CLIENT_WINDOW_ICON    "iourbanterror"
+#define CONSOLE_WINDOW_TITLE  "Quake3-UrT console"
+#define CONSOLE_WINDOW_ICON   "iourbanterror console"
+// 1.32 released 7-10-2002
+
+#define BASEGAME              "q3ut4"
 
 #define MAX_TEAMNAME 32
 
@@ -101,8 +97,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/bg_lib.h"
 
-typedef int intptr_t;
-
 #else
 
 #include <assert.h>
@@ -115,47 +109,36 @@ typedef int intptr_t;
 #include <ctype.h>
 #include <limits.h>
 
-// vsnprintf is ISO/IEC 9899:1999
-// abstracting this to make it portable
-#ifdef _WIN32
-  #define Q_vsnprintf _vsnprintf
-  #define Q_snprintf _snprintf
-#else
-  #define Q_vsnprintf vsnprintf
-  #define Q_snprintf snprintf
 #endif
-
-#ifdef _MSC_VER
-  #include <io.h>
-
-  typedef __int64 int64_t;
-  typedef __int32 int32_t;
-  typedef __int16 int16_t;
-  typedef __int8 int8_t;
-  typedef unsigned __int64 uint64_t;
-  typedef unsigned __int32 uint32_t;
-  typedef unsigned __int16 uint16_t;
-  typedef unsigned __int8 uint8_t;
-#else
-  #include <stdint.h>
-#endif
-
-#endif
-
 
 #include "q_platform.h"
 
 //=============================================================
 
+#ifdef Q3_VM
+   typedef int intptr_t;
+#else
+  #ifndef _MSC_VER
+    #include <stdint.h>
+    #define Q_vsnprintf vsnprintf
+  #else
+    #include <io.h>
+    typedef __int64 int64_t;
+    typedef __int32 int32_t;
+    typedef __int16 int16_t;
+    typedef __int8 int8_t;
+    typedef unsigned __int64 uint64_t;
+    typedef unsigned __int32 uint32_t;
+    typedef unsigned __int16 uint16_t;
+    typedef unsigned __int8 uint8_t;
+
+    int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap);
+  #endif
+#endif
+
 typedef unsigned char 		byte;
 
 typedef enum {qfalse, qtrue}	qboolean;
-
-typedef union {
-	float f;
-	int i;
-	unsigned int ui;
-} floatint_t;
 
 typedef int		qhandle_t;
 typedef int		sfxHandle_t;
@@ -177,7 +160,6 @@ typedef int		clipHandle_t;
 #define	MAX_QINT			0x7fffffff
 #define	MIN_QINT			(-MAX_QINT-1)
 
-#define ARRAY_LEN(x)      (sizeof(x) / sizeof(*(x)))
 
 // angle indexes
 #define	PITCH				0		// up / down
@@ -209,6 +191,10 @@ typedef int		clipHandle_t;
 #define	MAX_NAME_LENGTH		32		// max length of a client name
 
 #define	MAX_SAY_TEXT	150
+
+// Fenix
+#define MAX_MAPLIST_SIZE    8       // Maximum number of maps to display upon partial name multiple match
+#define MAX_MAPLIST_STRING  8192    // Length of the string retrieved using FS_GetFileList
 
 // paramters for command buffer stuffing
 typedef enum {
@@ -287,6 +273,14 @@ void *Hunk_AllocDebug( int size, ha_pref preference, char *label, char *file, in
 void *Hunk_Alloc( int size, ha_pref preference );
 #endif
 
+#if defined(__GNUC__) && !defined(__MINGW32__) && !defined(MACOS_X)
+// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=371
+// custom Snd_Memset implementation for glibc memset bug workaround
+void Snd_Memset (void* dest, const int val, const size_t count);
+#else
+#define Snd_Memset Com_Memset
+#endif
+
 #define Com_Memset memset
 #define Com_Memcpy memcpy
 
@@ -352,7 +346,7 @@ extern	vec4_t		colorMdGrey;
 extern	vec4_t		colorDkGrey;
 
 #define Q_COLOR_ESCAPE	'^'
-#define Q_IsColorString(p)	( p && *(p) == Q_COLOR_ESCAPE && *((p)+1) && isalnum(*((p)+1)) ) // ^[0-9a-zA-Z]
+#define Q_IsColorString(p) (p && *p == Q_COLOR_ESCAPE && *(p+1) && *(p+1) >= '0' && *(p+1) <= '9')
 
 #define COLOR_BLACK		'0'
 #define COLOR_RED		'1'
@@ -362,7 +356,9 @@ extern	vec4_t		colorDkGrey;
 #define COLOR_CYAN		'5'
 #define COLOR_MAGENTA	'6'
 #define COLOR_WHITE		'7'
-#define ColorIndex(c)	( ( (c) - '0' ) & 7 )
+#define COLOR_ORANGE 	'8'
+#define COLOR_OLIVE 	'9'
+#define ColorIndex(c)  ( ( (c) - '0' ) % 10 )
 
 #define S_COLOR_BLACK	"^0"
 #define S_COLOR_RED		"^1"
@@ -372,8 +368,10 @@ extern	vec4_t		colorDkGrey;
 #define S_COLOR_CYAN	"^5"
 #define S_COLOR_MAGENTA	"^6"
 #define S_COLOR_WHITE	"^7"
+#define S_COLOR_ORANGE 	"^8"
+#define S_COLOR_OLIVE  	"^9"
 
-extern vec4_t	g_color_table[8];
+extern vec4_t	g_color_table[10];
 
 #define	MAKERGB( v, r, g, b ) v[0]=r;v[1]=g;v[2]=b
 #define	MAKERGBA( v, r, g, b, a ) v[0]=r;v[1]=g;v[2]=b;v[3]=a
@@ -659,7 +657,6 @@ void SkipRestOfLine ( char **data );
 void Parse1DMatrix (char **buf_p, int x, float *m);
 void Parse2DMatrix (char **buf_p, int y, int x, float *m);
 void Parse3DMatrix (char **buf_p, int z, int y, int x, float *m);
-int Com_HexStrToInt( const char *str );
 
 void	QDECL Com_sprintf (char *dest, int size, const char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
 
@@ -688,8 +685,6 @@ int Q_isprint( int c );
 int Q_islower( int c );
 int Q_isupper( int c );
 int Q_isalpha( int c );
-qboolean Q_isanumber( const char *s );
-qboolean Q_isintegral( float f );
 
 // portable case insensitive compare
 int		Q_stricmp (const char *s1, const char *s2);
@@ -698,7 +693,12 @@ int		Q_stricmpn (const char *s1, const char *s2, int n);
 char	*Q_strlwr( char *s1 );
 char	*Q_strupr( char *s1 );
 char	*Q_strrchr( const char* string, int c );
-const char	*Q_stristr( const char *s, const char *find);
+char	*Q_strnchr( const char* string, int c, int n );
+char	*Q_strnrchr( const char *string, int c, int n );
+
+// Fenix: for substring matching
+int Q_strsub (const char *s1, const char *s2);
+int Q_strisub (const char *s1, const char *s2);
 
 // buffer size safe library replacements
 void	Q_strncpyz( char *dest, const char *src, int destsize );
@@ -708,8 +708,6 @@ void	Q_strcat( char *dest, int size, const char *src );
 int Q_PrintStrlen( const char *string );
 // removes color sequences from string
 char *Q_CleanStr( char *string );
-// Count the number of char tocount encountered in string
-int Q_CountChar(const char *string, char tocount);
 
 //=============================================
 
@@ -751,11 +749,10 @@ void Com_TruncateLongString( char *buffer, const char *s );
 // key / value info strings
 //
 char *Info_ValueForKey( const char *s, const char *key );
-int Info_RemoveKey( char *s, const char *key );
-int Info_RemoveKey_Big( char *s, const char *key );
-int Info_SetValueForKey( char *s, const char *key, const char *value );
-int Info_SetValueForKeySilent( char *s, const char *key, const char *value );
-int Info_SetValueForKey_Big( char *s, const char *key, const char *value );
+void Info_RemoveKey( char *s, const char *key );
+void Info_RemoveKey_big( char *s, const char *key );
+void Info_SetValueForKey( char *s, const char *key, const char *value );
+void Info_SetValueForKey_Big( char *s, const char *key, const char *value );
 qboolean Info_Validate( const char *s );
 void Info_NextPair( const char **s, char *key, char *value );
 
@@ -763,6 +760,8 @@ void Info_NextPair( const char **s, char *key, char *value );
 void	QDECL Com_Error( int level, const char *error, ... ) __attribute__ ((format (printf, 2, 3)));
 void	QDECL Com_Printf( const char *msg, ... ) __attribute__ ((format (printf, 1, 2)));
 
+
+void Field_CompleteFilename( const char *dir, const char *ext, qboolean stripExt );
 
 /*
 ==========================================================
@@ -799,19 +798,15 @@ default values.
 
 // nothing outside the Cvar_*() functions should modify these fields!
 typedef struct cvar_s {
-	char			*name;
-	char			*string;
-	char			*resetString;		// cvar_restart will reset to this value
-	char			*latchedString;		// for CVAR_LATCH vars
-	int				flags;
+	char		*name;
+	char		*string;
+	char		*resetString;		// cvar_restart will reset to this value
+	char		*latchedString;		// for CVAR_LATCH vars
+	int			flags;
 	qboolean	modified;			// set each time the cvar is changed
-	int				modificationCount;	// incremented each time the cvar is changed
-	float			value;				// atof( string )
-	int				integer;			// atoi( string )
-	qboolean	validate;
-	qboolean	integral;
-	float			min;
-	float			max;
+	int			modificationCount;	// incremented each time the cvar is changed
+	float		value;				// atof( string )
+	int			integer;			// atoi( string )
 	struct cvar_s *next;
 	struct cvar_s *hashNext;
 } cvar_t;
@@ -901,10 +896,11 @@ typedef struct {
 
 // in order from highest priority to lowest
 // if none of the catchers are active, bound key strings will be executed
-#define KEYCATCH_CONSOLE		0x0001
-#define	KEYCATCH_UI					0x0002
-#define	KEYCATCH_MESSAGE		0x0004
-#define	KEYCATCH_CGAME			0x0008
+#define KEYCATCH_CONSOLE    0x0001
+#define KEYCATCH_UI         0x0002
+#define KEYCATCH_MESSAGE    0x0004
+#define KEYCATCH_CGAME      0x0008
+#define KEYCATCH_RADIO      0x0010
 
 
 // sound channels
@@ -941,7 +937,9 @@ typedef enum {
 // per-level limits
 //
 #define	MAX_CLIENTS			64		// absolute limit
-#define MAX_LOCATIONS		64
+
+//@Barbatos - previously 64 - was too low, some custom jump maps have like 200 locations (!!)
+#define MAX_LOCATIONS		360
 
 #define	GENTITYNUM_BITS		10		// don't need to send any more
 #define	MAX_GENTITIES		(1<<GENTITYNUM_BITS)
@@ -997,7 +995,7 @@ typedef struct {
 // so if a playerState_t is transmitted, the entityState_t can be fully derived
 // from it.
 typedef struct playerState_s {
-	int			commandTime;	// cmd->serverTime of last executed command
+	int			commandTime;	// cmd->serverTime of last executed command, timer che non si riavvia mai
 	int			pm_type;
 	int			bobCycle;		// for view bobbing and footstep generation
 	int			pm_flags;		// ducked, jump_held, etc
@@ -1029,7 +1027,7 @@ typedef struct playerState_s {
 	int			eFlags;			// copied to entityState_t->eFlags
 
 	int			eventSequence;	// pmove generated events
-	int			events[MAX_PS_EVENTS];
+	int			events[MAX_PS_EVENTS]; // max_ps_events = 2
 	int			eventParms[MAX_PS_EVENTS];
 
 	int			externalEvent;	// events set on player from another source
@@ -1037,8 +1035,8 @@ typedef struct playerState_s {
 	int			externalEventTime;
 
 	int			clientNum;		// ranges from 0 to MAX_CLIENTS-1
-	int			weapon;			// copied to entityState_t->weapon
-	int			weaponstate;
+	int			weapon;			// copied to entityState_t->weapon, weapon slot
+	int			weaponstate;    // 4
 
 	vec3_t		viewangles;		// for fixed views
 	int			viewheight;
@@ -1049,8 +1047,8 @@ typedef struct playerState_s {
 	int			damagePitch;
 	int			damageCount;
 
-	int			stats[MAX_STATS];
-	int			persistant[MAX_PERSISTANT];	// stats that aren't cleared on death
+	int			stats[MAX_STATS]; // max_stats = 16
+	int			persistant[MAX_PERSISTANT];	// stats that aren't cleared on death, contains score of player/team
 	int			powerups[MAX_POWERUPS];	// level.time that the powerup runs out
 	int			ammo[MAX_WEAPONS];
 

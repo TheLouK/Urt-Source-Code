@@ -32,7 +32,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 void IN_Init( void );
 void IN_Frame( void );
 void IN_Shutdown( void );
-void IN_Restart( void );
 
 // Console
 void CON_Shutdown( void );
@@ -48,8 +47,10 @@ unsigned int CON_LogRead( char *out, unsigned int outSize );
 char *Sys_StripAppBundle( char *pwd );
 #endif
 
-void Sys_GLimpInit( void );
+#ifndef _WIN32
 void Sys_PlatformInit( void );
+#endif
+
 void Sys_SigHandler( int signal );
 void Sys_ErrorDialog( const char *error );
 void Sys_AnsiColorPrint( const char *msg );

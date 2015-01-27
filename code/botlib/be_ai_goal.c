@@ -238,9 +238,9 @@ void BotInterbreedGoalFuzzyLogic(int parent1, int parent2, int child)
 //===========================================================================
 void BotSaveGoalFuzzyLogic(int goalstate, char *filename)
 {
-	//bot_goalstate_t *gs;
+	bot_goalstate_t *gs;
 
-	//gs = BotGoalStateFromHandle(goalstate);
+	gs = BotGoalStateFromHandle(goalstate);
 
 	//WriteWeightConfig(filename, gs->itemweightconfig);
 } //end of the function BotSaveGoalFuzzyLogic
@@ -522,7 +522,7 @@ void BotInitInfoEntities(void)
 			numcampspots++;
 		} //end else if
 	} //end for
-	if (botDeveloper)
+	if (bot_developer)
 	{
 		botimport.Print(PRT_MESSAGE, "%d map locations\n", numlocations);
 		botimport.Print(PRT_MESSAGE, "%d camp spots\n", numcampspots);

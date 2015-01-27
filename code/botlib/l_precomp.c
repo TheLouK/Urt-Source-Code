@@ -131,7 +131,7 @@ void QDECL SourceError(source_t *source, char *str, ...)
 	va_list ap;
 
 	va_start(ap, str);
-	Q_vsnprintf(text, sizeof(text), str, ap);
+	vsprintf(text, str, ap);
 	va_end(ap);
 #ifdef BOTLIB
 	botimport.Print(PRT_ERROR, "file %s, line %d: %s\n", source->scriptstack->filename, source->scriptstack->line, text);
@@ -155,7 +155,7 @@ void QDECL SourceWarning(source_t *source, char *str, ...)
 	va_list ap;
 
 	va_start(ap, str);
-	Q_vsnprintf(text, sizeof(text), str, ap);
+	vsprintf(text, str, ap);
 	va_end(ap);
 #ifdef BOTLIB
 	botimport.Print(PRT_WARNING, "file %s, line %d: %s\n", source->scriptstack->filename, source->scriptstack->line, text);
@@ -271,7 +271,7 @@ token_t *PC_CopyToken(token_t *token)
 #ifdef BSPC
 		Error("out of token space\n");
 #else
-		Com_Error(ERR_FATAL, "out of token space");
+		Com_Error(ERR_FATAL, "out of token space\n");
 #endif
 		return NULL;
 	} //end if
@@ -1362,7 +1362,7 @@ define_t *PC_DefineFromString(char *string)
 #endif //DEFINEHASHING
 	//
 	FreeScript(script);
-	//if the define was created successfully
+	//if the define was created succesfully
 	if (res > 0) return def;
 	//free the define is created
 	if (src.defines) PC_FreeDefine(def);
@@ -1617,7 +1617,7 @@ typedef struct operator_s
 typedef struct value_s
 {
 	signed long int intvalue;
-	float floatvalue;
+	double floatvalue;
 	int parentheses;
 	struct value_s *prev, *next;
 } value_t;
@@ -1685,7 +1685,7 @@ int PC_OperatorPriority(int op)
 #define FreeOperator(op)
 
 int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intvalue,
-																	float *floatvalue, int integer)
+																	double *floatvalue, int integer)
 {
 	operator_t *o, *firstoperator, *lastoperator;
 	value_t *v, *firstvalue, *lastvalue, *v1, *v2;
@@ -1696,8 +1696,9 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 	int lastwasvalue = 0;
 	int negativevalue = 0;
 	int questmarkintvalue = 0;
-	float questmarkfloatvalue = 0;
+	double questmarkfloatvalue = 0;
 	int gotquestmarkvalue = qfalse;
+	int lastoperatortype = 0;
 	//
 	operator_t operator_heap[MAX_OPERATORS];
 	int numoperators = 0;
@@ -2086,6 +2087,7 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 		else Log_Write("result value = %f", v1->floatvalue);
 #endif //DEBUG_EVAL
 		if (error) break;
+		lastoperatortype = o->operator;
 		//if not an operator with arity 1
 		if (o->operator != P_LOGIC_NOT
 				&& o->operator != P_BIN_NOT)
@@ -2137,7 +2139,7 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 // Changes Globals:		-
 //============================================================================
 int PC_Evaluate(source_t *source, signed long int *intvalue,
-												float *floatvalue, int integer)
+												double *floatvalue, int integer)
 {
 	token_t token, *firsttoken, *lasttoken;
 	token_t *t, *nexttoken;
@@ -2236,7 +2238,7 @@ int PC_Evaluate(source_t *source, signed long int *intvalue,
 // Changes Globals:		-
 //============================================================================
 int PC_DollarEvaluate(source_t *source, signed long int *intvalue,
-												float *floatvalue, int integer)
+												double *floatvalue, int integer)
 {
 	int indent, defined = qfalse;
 	token_t token, *firsttoken, *lasttoken;
@@ -2466,7 +2468,7 @@ int PC_Directive_eval(source_t *source)
 //============================================================================
 int PC_Directive_evalfloat(source_t *source)
 {
-	float value;
+	double value;
 	token_t token;
 
 	if (!PC_Evaluate(source, NULL, &value, qfalse)) return qfalse;
@@ -2559,16 +2561,12 @@ int PC_DollarDirective_evalint(source_t *source)
 	sprintf(token.string, "%d", abs(value));
 	token.type = TT_NUMBER;
 	token.subtype = TT_INTEGER|TT_LONG|TT_DECIMAL;
-
 #ifdef NUMBERVALUE
-	token.intvalue = abs(value);
-	token.floatvalue = token.intvalue;
+	token.intvalue = value;
+	token.floatvalue = value;
 #endif //NUMBERVALUE
-
 	PC_UnreadSourceToken(source, &token);
-	if (value < 0)
-		UnreadSignToken(source);
-
+	if (value < 0) UnreadSignToken(source);
 	return qtrue;
 } //end of the function PC_DollarDirective_evalint
 //============================================================================
@@ -2579,7 +2577,7 @@ int PC_DollarDirective_evalint(source_t *source)
 //============================================================================
 int PC_DollarDirective_evalfloat(source_t *source)
 {
-	float value;
+	double value;
 	token_t token;
 
 	if (!PC_DollarEvaluate(source, NULL, &value, qfalse)) return qfalse;
@@ -2590,16 +2588,12 @@ int PC_DollarDirective_evalfloat(source_t *source)
 	sprintf(token.string, "%1.2f", fabs(value));
 	token.type = TT_NUMBER;
 	token.subtype = TT_FLOAT|TT_LONG|TT_DECIMAL;
-
 #ifdef NUMBERVALUE
-	token.floatvalue = fabs(value);
-	token.intvalue = (unsigned long) token.floatvalue;
+	token.intvalue = (unsigned long) value;
+	token.floatvalue = value;
 #endif //NUMBERVALUE
-
 	PC_UnreadSourceToken(source, &token);
-	if (value < 0)
-		UnreadSignToken(source);
-
+	if (value < 0) UnreadSignToken(source);
 	return qtrue;
 } //end of the function PC_DollarDirective_evalfloat
 //============================================================================

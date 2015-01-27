@@ -101,6 +101,9 @@ typedef enum {
 	K_MWHEELDOWN,
 	K_MWHEELUP,
 
+	K_MWHEELLEFT,
+	K_MWHEELRIGHT,
+
 	K_JOY1,
 	K_JOY2,
 	K_JOY3,
@@ -259,9 +262,6 @@ typedef enum {
 	K_MENU,
 	K_EURO,
 	K_UNDO,
-
-	// Pseudo-key that brings the console down
-	K_CONSOLE,
 
 	MAX_KEYS
 } keyNum_t;

@@ -32,10 +32,7 @@ char *svc_strings[256] = {
 	"svc_baseline",	
 	"svc_serverCommand",
 	"svc_download",
-	"svc_snapshot",
-	"svc_EOF",
-	"svc_extension",
-	"svc_voip",
+	"svc_snapshot"
 };
 
 void SHOWNET( msg_t *msg, char *s) {
@@ -61,7 +58,7 @@ Parses deltas from the given base and adds the resulting entity
 to the current frame
 ==================
 */
-void CL_DeltaEntity (msg_t *msg, clSnapshot_t *frame, int newnum, entityState_t *old, 
+void CL_DeltaEntity (msg_t *msg, clSnapshot_t *frame, int newnum, entityState_t *old,
 					 qboolean unchanged) {
 	entityState_t	*state;
 
@@ -239,7 +236,7 @@ void CL_ParseSnapshot( msg_t *msg ) {
 	// If the frame is delta compressed from data that we
 	// no longer have available, we must suck up the rest of
 	// the frame, but not use it, then ask for a non-compressed
-	// message 
+	// message
 	if ( newSnap.deltaNum <= 0 ) {
 		newSnap.valid = qtrue;		// uncompressed frame
 		old = NULL;
@@ -330,9 +327,192 @@ void CL_ParseSnapshot( msg_t *msg ) {
 int cl_connectedToPureServer;
 int cl_connectedToCheatServer;
 
-#ifdef USE_VOIP
-int cl_connectedToVoipServer;
-#endif
+/*
+================
+TextDecode6Bit
+
+Decode pk3 file names encoded usign 6 bit alphabet
+================
+*/
+
+void TextDecode6Bit(unsigned char *buf, int blen, char *out, int olen)
+{
+ static char val2char[] = "\x00 !#%&'()+,-.0123456789;=@[]^_`abcdefghijklmnopqrstuvwxyz{}~";
+ int i;
+ int sh = 0;
+ int shn = 0;
+ int op = -1; // encode added space at start
+
+ for(i=0;i<blen;i++) {
+  int v = buf[i];
+  if (v>=64) Com_Error (ERR_DROP,"TextDecode6Bit: Character value out of range (%d)\n",v);
+  if (v<60) {
+   v = val2char[v];
+   if (op>=0) out[op] = v;
+   op++;
+   if (!v) return; // null terminated, we are done
+  } else {
+   switch (v-60) {
+    case 0:
+     if (op+5>olen) {
+      buf[op]=0;
+      Com_Printf("TextDecode6Bit: target buffer overflow!\n");
+      return;
+     }
+     if (op>=0) out[op+0] = ' ';
+     out[op+1] = 'u';
+     out[op+2] = 't';
+     out[op+3] = '4';
+     out[op+4] = '_';
+     op+=5;
+     break;
+    case 1:
+     if (op+4>olen) {
+      buf[op]=0;
+      Com_Printf("TextDecode6Bit: target buffer overflow!\n");
+      return;
+     }
+     if (op>=0) out[op+0] = ' ';
+     out[op+1] = 'u';
+     out[op+2] = 't';
+     out[op+3] = '_';
+     op+=4;
+     break;
+    case 2:
+     if (op+5>olen) {
+      buf[op]=0;
+      Com_Printf("TextDecode6Bit: target buffer overflow!\n");
+      return;
+     }
+     if (op>=0) out[op+0] = '_';
+     out[op+1] = 'b';
+     out[op+2] = 'e';
+     out[op+3] = 't';
+     out[op+4] = 'a';
+     op+=5;
+     break;
+    case 3:
+     if (op+5>olen) {
+      buf[op]=0;
+      Com_Printf("TextDecode6Bit: target buffer overflow!\n");
+      return;
+     }
+     if (op>=0) out[op+0] = 'j';
+     out[op+1] = 'u';
+     out[op+2] = 'm';
+     out[op+3] = 'p';
+     out[op+4] = 's';
+     op+=5;
+     break;
+   }
+  }
+  if (op==olen) {
+   break;
+  }
+ }
+}
+
+
+/*
+================
+CL_ParseCompressedPureList
+
+Decode, decompress and set pure file list from compressed data
+================
+*/
+void CL_ParseCompressedPureList()
+{
+ int i,esc,sh,shc,bl;
+ static unsigned char buf[PURE_COMPRESS_BUFFER];
+ int l;
+ static char sums[16384];
+ static char names[BIG_INFO_STRING*4];
+ msg_t msg = {0};
+
+ // Decode 7 bit encoding into 8 bit buffer
+ esc = 0;
+ shc = 0;
+ sh = 0;
+ bl = 0;
+ for(i=0;(i<8)&&(bl<sizeof(buf));i++) {
+  char *s = cl.gameState.stringData + cl.gameState.stringOffsets[ MAX_CONFIGSTRINGS-PURE_COMPRESS_NUMCS+i ];
+  while(*s) {
+   int v = *(s++);
+   if (esc) {
+    v--;
+    esc=0;
+   } else {
+    if (v=='@') {
+     esc=1;
+     continue;
+    }
+   }
+   sh=(sh<<7)|v;
+   shc+=7;
+   if (shc>=8) {
+    shc-=8;
+    v = (sh>>shc)&0xFF;
+    buf[bl++] = v;
+//    fprintf(stderr,"%02X",v);
+   }
+  }
+ }
+// fprintf(stderr,"\n");
+
+ Com_Printf("Pure filelist compressed size: %d\n",bl);
+ if (bl<2+4+1) {
+  Com_Error (ERR_DROP,"CL_ParseCompressedPureList: CS data too short to be valid (%d bytes)\n",bl);
+ }
+
+ // Decompress huffman encoded filenames
+ msg.maxsize = sizeof(buf);
+ msg.cursize = bl;
+ msg.data = buf;
+ l = (buf[0]|(buf[1]<<8))*4;
+ if ((l>msg.maxsize) || (l<4)) Com_Error(ERR_DROP,"Malformed compressed pure filelist size");
+ Huff_Decompress(&msg,2+l);
+
+ Com_Printf("Pure filelist (%d files) decompressed size: %d\n",l/4,bl);
+
+// fprintf(stderr,"DECOMPRESSED(%d): ",msg.cursize);
+// for(i=0;i<msg.cursize;i++) fprintf(stderr,"%02X",buf[i]);
+// fprintf(stderr,"\n");
+
+ // create checksums string
+ sums[0]=0;
+ sh=0;
+ for(i=0;i<l;i+=4) {
+  char tmp[16];
+  int n;
+  unsigned int chs = buf[2+i+0]|(buf[2+i+1]<<8)|(buf[2+i+2]<<16)|(buf[2+i+3]<<24);
+  n = sprintf(tmp,"%i ",chs); // Can't use Com_sprintf, it doesn't return anything
+  if (sh+n+1>=sizeof(sums)) {
+   Com_Error(ERR_DROP,"Checksum buffer overflow");
+   break;
+  }
+  strcpy(sums+sh,tmp);
+  sh+=n;
+//  Q_strcat( sums, sizeof( sums), va("%i ", chs ) ); // this is fugly
+ }
+ if (sh && sums[sh-1]==' ') sums[sh-1] = 0; // kill ending space
+
+ // unpack pk3 filenames
+ TextDecode6Bit(buf+2+l, msg.cursize-(2+l), names, sizeof(names));
+
+// do simple integrity check, both should have same number of items
+ sh=1; // number of spaces = number of names-1
+ i=0;
+ while(names[i]) { if (names[i]==' ') sh++; i++; }
+ Com_DPrintf("FNAMES: %d  CHSUMS: %d\n",sh,l/4);
+ if (abs(sh-l/4)>2) Com_Printf("WARNING: Compressed purelist inconsistency!! (FN:%d/CH:%d)\n",sh,l/4);
+
+ if (com_developer->value) {
+  // fprintf to stderr needed, these strings are huge and will overflow console buffer
+  fprintf(stderr,"FNAMES: \"%s\"\n",names);
+  fprintf(stderr,"CHSUMS: \"%s\"\n",sums);
+ }
+ FS_PureServerSetLoadedPaks( sums, names );
+}
 
 /*
 ==================
@@ -362,13 +542,6 @@ void CL_SystemInfoChanged( void ) {
 		return;
 	}
 
-#ifdef USE_VOIP
-	// in the future, (val) will be a protocol version string, so only
-	//  accept explicitly 1, not generally non-zero.
-	s = Info_ValueForKey( systemInfo, "sv_voip" );
-	cl_connectedToVoipServer = (atoi( s ) == 1);
-#endif
-
 	s = Info_ValueForKey( systemInfo, "sv_cheats" );
 	cl_connectedToCheatServer = atoi( s );
 	if ( !cl_connectedToCheatServer ) {
@@ -378,7 +551,13 @@ void CL_SystemInfoChanged( void ) {
 	// check pure server string
 	s = Info_ValueForKey( systemInfo, "sv_paks" );
 	t = Info_ValueForKey( systemInfo, "sv_pakNames" );
-	FS_PureServerSetLoadedPaks( s, t );
+	if (s[0]=='*' && s[1]==0 && t[0]=='*' && t[1]==0) {
+		Com_Printf("Using compressed pure file list\n");
+		CL_ParseCompressedPureList();
+	} else {
+		Com_Printf("Using standard pure file list\n");
+		FS_PureServerSetLoadedPaks( s, t );
+	}
 
 	s = Info_ValueForKey( systemInfo, "sv_referencedPaks" );
 	t = Info_ValueForKey( systemInfo, "sv_referencedPakNames" );
@@ -445,6 +624,9 @@ static void CL_ParseServerInfo(void)
 	Q_strncpyz(clc.sv_dlURL,
 		Info_ValueForKey(serverInfo, "sv_dlURL"),
 		sizeof(clc.sv_dlURL));
+	Q_strncpyz(clc.mapname,
+    Info_ValueForKey(serverInfo, "mapname"),
+		sizeof(clc.mapname));
 }
 
 /*
@@ -527,6 +709,26 @@ void CL_ParseGamestate( msg_t *msg ) {
 	// reinitialize the filesystem if the game directory has changed
 	FS_ConditionalRestart( clc.checksumFeed );
 
+	if (foreignQVMsFound) {
+		char QVMList[MAX_STRING_CHARS];
+		for (i = 0; i < foreignQVMsFound; i++) {
+			strcat(QVMList, va("%s.pk3, ", foreignQVMNames[i]));
+		}
+
+		QVMList[strlen(QVMList) - 2] = 0;
+
+		Cvar_Set("com_errorMessage", va(
+			"^1WARNING! ^7QVM found in downloaded pk3%s\n\n%s\n\n"
+			"You should go delete %s immediately. %s could contain malicious code.",
+			foreignQVMsFound == 1 ? ":" : "s:",
+			QVMList,
+			foreignQVMsFound == 1 ? "that file" : "those files",
+			foreignQVMsFound == 1 ? "It" : "They"));
+
+		VM_Call(uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN);
+		return;
+	}
+
 	// This used to call CL_StartHunkUsers, but now we enter the download state before loading the
 	// cgame
 	CL_InitDownloads();
@@ -548,7 +750,7 @@ A download message has been received from the server
 void CL_ParseDownload ( msg_t *msg ) {
 	int		size;
 	unsigned char data[MAX_MSGLEN];
-	int block;
+	uint16_t block;
 
 	if (!*clc.downloadTempName) {
 		Com_Printf("Server sending download, but no download was requested\n");
@@ -559,7 +761,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 	// read the data
 	block = MSG_ReadShort ( msg );
 
-	if ( !block )
+	if(!block && !clc.downloadBlock)
 	{
 		// block zero is special, contains file size
 		clc.downloadSize = MSG_ReadLong ( msg );
@@ -568,7 +770,7 @@ void CL_ParseDownload ( msg_t *msg ) {
 
 		if (clc.downloadSize < 0)
 		{
-			Com_Error( ERR_DROP, "%s", MSG_ReadString( msg ) );
+			Com_Error(ERR_DROP, MSG_ReadString( msg ) );
 			return;
 		}
 	}
@@ -582,8 +784,9 @@ void CL_ParseDownload ( msg_t *msg ) {
 	
 	MSG_ReadData(msg, data, size);
 
-	if (clc.downloadBlock != block) {
-		Com_DPrintf( "CL_ParseDownload: Expected block %d, got %d\n", clc.downloadBlock, block);
+	if((clc.downloadBlock & 0xFFFF) != block)
+	{
+		Com_DPrintf( "CL_ParseDownload: Expected block %d, got %d\n", (clc.downloadBlock & 0xFFFF), block);
 		return;
 	}
 
@@ -635,164 +838,6 @@ void CL_ParseDownload ( msg_t *msg ) {
 	}
 }
 
-#ifdef USE_VOIP
-static
-qboolean CL_ShouldIgnoreVoipSender(int sender)
-{
-	if (!cl_voip->integer)
-		return qtrue;  // VoIP is disabled.
-	else if ((sender == clc.clientNum) && (!clc.demoplaying))
-		return qtrue;  // ignore own voice (unless playing back a demo).
-	else if (clc.voipMuteAll)
-		return qtrue;  // all channels are muted with extreme prejudice.
-	else if (clc.voipIgnore[sender])
-		return qtrue;  // just ignoring this guy.
-	else if (clc.voipGain[sender] == 0.0f)
-		return qtrue;  // too quiet to play.
-
-	return qfalse;
-}
-
-/*
-=====================
-CL_ParseVoip
-
-A VoIP message has been received from the server
-=====================
-*/
-static
-void CL_ParseVoip ( msg_t *msg ) {
-	static short decoded[4096];  // !!! FIXME: don't hardcode.
-
-	const int sender = MSG_ReadShort(msg);
-	const int generation = MSG_ReadByte(msg);
-	const int sequence = MSG_ReadLong(msg);
-	const int frames = MSG_ReadByte(msg);
-	const int packetsize = MSG_ReadShort(msg);
-	char encoded[1024];
-	int seqdiff = sequence - clc.voipIncomingSequence[sender];
-	int written = 0;
-	int i;
-
-	Com_DPrintf("VoIP: %d-byte packet from client %d\n", packetsize, sender);
-
-	if (sender < 0)
-		return;   // short/invalid packet, bail.
-	else if (generation < 0)
-		return;   // short/invalid packet, bail.
-	else if (sequence < 0)
-		return;   // short/invalid packet, bail.
-	else if (frames < 0)
-		return;   // short/invalid packet, bail.
-	else if (packetsize < 0)
-		return;   // short/invalid packet, bail.
-
-	if (packetsize > sizeof (encoded)) {  // overlarge packet?
-		int bytesleft = packetsize;
-		while (bytesleft) {
-			int br = bytesleft;
-			if (br > sizeof (encoded))
-				br = sizeof (encoded);
-			MSG_ReadData(msg, encoded, br);
-			bytesleft -= br;
-		}
-		return;   // overlarge packet, bail.
-	}
-
-	if (!clc.speexInitialized) {
-		MSG_ReadData(msg, encoded, packetsize);  // skip payload.
-		return;   // can't handle VoIP without libspeex!
-	} else if (sender >= MAX_CLIENTS) {
-		MSG_ReadData(msg, encoded, packetsize);  // skip payload.
-		return;   // bogus sender.
-	} else if (CL_ShouldIgnoreVoipSender(sender)) {
-		MSG_ReadData(msg, encoded, packetsize);  // skip payload.
-		return;   // Channel is muted, bail.
-	}
-
-	// !!! FIXME: make sure data is narrowband? Does decoder handle this?
-
-	Com_DPrintf("VoIP: packet accepted!\n");
-
-	// This is a new "generation" ... a new recording started, reset the bits.
-	if (generation != clc.voipIncomingGeneration[sender]) {
-		Com_DPrintf("VoIP: new generation %d!\n", generation);
-		speex_bits_reset(&clc.speexDecoderBits[sender]);
-		clc.voipIncomingGeneration[sender] = generation;
-		seqdiff = 0;
-	} else if (seqdiff < 0) {   // we're ahead of the sequence?!
-		// This shouldn't happen unless the packet is corrupted or something.
-		Com_DPrintf("VoIP: misordered sequence! %d < %d!\n",
-		            sequence, clc.voipIncomingSequence[sender]);
-		// reset the bits just in case.
-		speex_bits_reset(&clc.speexDecoderBits[sender]);
-		seqdiff = 0;
-	} else if (seqdiff > 100) { // more than 2 seconds of audio dropped?
-		// just start over.
-		Com_DPrintf("VoIP: Dropped way too many (%d) frames from client #%d\n",
-		            seqdiff, sender);
-		speex_bits_reset(&clc.speexDecoderBits[sender]);
-		seqdiff = 0;
-	}
-
-	if (seqdiff != 0) {
-		Com_DPrintf("VoIP: Dropped %d frames from client #%d\n",
-		            seqdiff, sender);
-		// tell speex that we're missing frames...
-		for (i = 0; i < seqdiff; i++) {
-			assert((written + clc.speexFrameSize) * 2 < sizeof (decoded));
-			speex_decode_int(clc.speexDecoder[sender], NULL, decoded + written);
-			written += clc.speexFrameSize;
-		}
-	}
-
-	for (i = 0; i < frames; i++) {
-		char encoded[256];
-		const int len = MSG_ReadByte(msg);
-		if (len < 0) {
-			Com_DPrintf("VoIP: Short packet!\n");
-			break;
-		}
-		MSG_ReadData(msg, encoded, len);
-
-		// shouldn't happen, but just in case...
-		if ((written + clc.speexFrameSize) * 2 > sizeof (decoded)) {
-			Com_DPrintf("VoIP: playback %d bytes, %d samples, %d frames\n",
-			            written * 2, written, i);
-			S_RawSamples(sender + 1, written, clc.speexSampleRate, 2, 1,
-			             (const byte *) decoded, clc.voipGain[sender]);
-			written = 0;
-		}
-
-		speex_bits_read_from(&clc.speexDecoderBits[sender], encoded, len);
-		speex_decode_int(clc.speexDecoder[sender],
-		                 &clc.speexDecoderBits[sender], decoded + written);
-
-		#if 0
-		static FILE *encio = NULL;
-		if (encio == NULL) encio = fopen("voip-incoming-encoded.bin", "wb");
-		if (encio != NULL) { fwrite(encoded, len, 1, encio); fflush(encio); }
-		static FILE *decio = NULL;
-		if (decio == NULL) decio = fopen("voip-incoming-decoded.bin", "wb");
-		if (decio != NULL) { fwrite(decoded+written, clc.speexFrameSize*2, 1, decio); fflush(decio); }
-		#endif
-
-		written += clc.speexFrameSize;
-	}
-
-	Com_DPrintf("VoIP: playback %d bytes, %d samples, %d frames\n",
-	            written * 2, written, i);
-
-	if (written > 0) {
-		S_RawSamples(sender + 1, written, clc.speexSampleRate, 2, 1,
-		             (const byte *) decoded, clc.voipGain[sender]);
-	}
-
-	clc.voipIncomingSequence[sender] = sequence + frames;
-}
-#endif
-
-
 /*
 =====================
 CL_ParseCommandString
@@ -838,7 +883,7 @@ void CL_ParseServerMessage( msg_t *msg ) {
 
 	// get the reliable sequence acknowledge number
 	clc.reliableAcknowledge = MSG_ReadLong( msg );
-	// 
+	//
 	if ( clc.reliableAcknowledge < clc.reliableSequence - MAX_RELIABLE_COMMANDS ) {
 		clc.reliableAcknowledge = clc.reliableSequence;
 	}
@@ -854,26 +899,13 @@ void CL_ParseServerMessage( msg_t *msg ) {
 
 		cmd = MSG_ReadByte( msg );
 
-		// See if this is an extension command after the EOF, which means we
-		//  got data that a legacy client should ignore.
-		if ((cmd == svc_EOF) && (MSG_LookaheadByte( msg ) == svc_extension)) {
-			SHOWNET( msg, "EXTENSION" );
-			MSG_ReadByte( msg );  // throw the svc_extension byte away.
-			cmd = MSG_ReadByte( msg );  // something legacy clients can't do!
-			// sometimes you get a svc_extension at end of stream...dangling
-			//  bits in the huffman decoder giving a bogus value?
-			if (cmd == -1) {
-				cmd = svc_EOF;
-			}
-		}
-
-		if (cmd == svc_EOF) {
+		if ( cmd == svc_EOF) {
 			SHOWNET( msg, "END OF MESSAGE" );
 			break;
 		}
 
 		if ( cl_shownet->integer >= 2 ) {
-			if ( (cmd < 0) || (!svc_strings[cmd]) ) {
+			if ( !svc_strings[cmd] ) {
 				Com_Printf( "%3i:BAD CMD %i\n", msg->readcount-1, cmd );
 			} else {
 				SHOWNET( msg, svc_strings[cmd] );
@@ -898,11 +930,6 @@ void CL_ParseServerMessage( msg_t *msg ) {
 			break;
 		case svc_download:
 			CL_ParseDownload( msg );
-			break;
-		case svc_voip:
-#ifdef USE_VOIP
-			CL_ParseVoip( msg );
-#endif
 			break;
 		}
 	}

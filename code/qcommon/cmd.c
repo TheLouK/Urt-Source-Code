@@ -24,7 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "q_shared.h"
 #include "qcommon.h"
 
-#define	MAX_CMD_BUFFER	16384
+// p5yc0runn3r - Increased cmd buffer by 2 for longer cfg scripts.
+#define	MAX_CMD_BUFFER	131072
 #define	MAX_CMD_LINE	1024
 
 typedef struct {
@@ -144,11 +145,9 @@ void Cbuf_ExecuteText (int exec_when, const char *text)
 	{
 	case EXEC_NOW:
 		if (text && strlen(text) > 0) {
-			Com_DPrintf(S_COLOR_YELLOW "EXEC_NOW %s\n", text);
 			Cmd_ExecuteString (text);
 		} else {
 			Cbuf_Execute();
-			Com_DPrintf(S_COLOR_YELLOW "EXEC_NOW %s\n", cmd_text.data);
 		}
 		break;
 	case EXEC_INSERT:
@@ -159,6 +158,7 @@ void Cbuf_ExecuteText (int exec_when, const char *text)
 		break;
 	default:
 		Com_Error (ERR_FATAL, "Cbuf_ExecuteText: bad exec_when");
+		break;
 	}
 }
 
@@ -239,11 +239,8 @@ Cmd_Exec_f
 ===============
 */
 void Cmd_Exec_f( void ) {
-	union {
-		char	*c;
-		void	*v;
-	} f;
-	int		len;
+
+	char	*f;
 	char	filename[MAX_QPATH];
 
 	if (Cmd_Argc () != 2) {
@@ -252,19 +249,61 @@ void Cmd_Exec_f( void ) {
 	}
 
 	Q_strncpyz( filename, Cmd_Argv(1), sizeof( filename ) );
-	COM_DefaultExtension( filename, sizeof( filename ), ".cfg" );
-	len = FS_ReadFile( filename, &f.v);
-	if (!f.c) {
+	COM_DefaultExtension( filename, sizeof( filename ), ".cfg" ); 
+	FS_ReadFile( filename, (void **)&f);
+
+	if (!f) {
 		Com_Printf ("couldn't exec %s\n",Cmd_Argv(1));
 		return;
 	}
+
 	Com_Printf ("execing %s\n",Cmd_Argv(1));
 	
-	Cbuf_InsertText (f.c);
+	Cbuf_InsertText (f);
 
-	FS_FreeFile (f.v);
+	FS_FreeFile (f);
 }
 
+/*
+===============
+Cmd_PVstr_f
+
+Inserts the current value of a variable as command text
+===============
+*/
+void Cmd_PVstr_f( void ) {
+	char *v = NULL;
+	static qboolean pushed = qfalse;
+
+	// dunno why five...probably because + keys are handled differently...
+	if (Cmd_Argc () != 5) {
+		Com_Printf ("+vstr <variablename1> <variablename2>: execute a variable command on key press and release\n");
+		return;
+	}
+
+	switch( Cmd_Argv( 0 )[0] ) {
+		case '+':
+			v = Cvar_VariableString( Cmd_Argv( 1 ) );
+			pushed = qtrue;
+			break;
+		case '-':
+			// we check this because otherwise key release would fire even in the console...
+			if(pushed) {
+				v = Cvar_VariableString( Cmd_Argv( 2 ) );
+				pushed = qfalse;
+			}
+			break;
+		default:
+			Com_Printf("Cmd_PVstr_f: unexpected leading character '%c'\n", Cmd_Argv( 0 )[0]);
+			break;
+
+	}
+
+	if (v) {
+		Cbuf_InsertText( va("%s\n", v ) );
+	}
+
+}
 
 /*
 ===============
@@ -316,7 +355,6 @@ typedef struct cmd_function_s
 	struct cmd_function_s	*next;
 	char					*name;
 	xcommand_t				function;
-	completionFunc_t	complete;
 } cmd_function_t;
 
 
@@ -413,53 +451,54 @@ Cmd_ArgsFromRaw
 ============
 */
 char *Cmd_ArgsFromRaw(int arg) {
-	static	char	cmd_args_raw[BIG_INFO_STRING];
-	char		*remaining_text;
-	int		argc = 0;
-	qboolean	ignoreQuotes = qfalse;
-
-	cmd_args_raw[0] = '\0';
-	if (arg < 0) { arg = 0; }
-	remaining_text = cmd_cmd;
-
-	while (qtrue) {
-		while (qtrue) {
-			while (*remaining_text && *remaining_text <= ' ') { remaining_text++; }
-			if (!*remaining_text) { return cmd_args_raw; }
-			if (remaining_text[0] == '/' && remaining_text[1] == '/') {
-				return cmd_args_raw; }
-			if (remaining_text[0] == '/' && remaining_text[1] == '*') {
-				while (*remaining_text &&
-					(remaining_text[0] != '*' || remaining_text[1] != '/')) {
-					remaining_text++;
-				}
-				if (!*remaining_text) { return cmd_args_raw; }
-				remaining_text += 2;
-			}
-			else { break; }
-		}
-		if (argc == arg) { break; }
-		if (!ignoreQuotes && *remaining_text == '"') {
-			argc++;
-			remaining_text++;
-			while (*remaining_text && *remaining_text != '"') { remaining_text++; }
-			if (!*remaining_text) { return cmd_args_raw; }
-			remaining_text++;
-			continue;
-		}
-		argc++;
-		while (*remaining_text > ' ') {
-			if (!ignoreQuotes && *remaining_text == '"') { break; }
-			if (remaining_text[0] == '/' && remaining_text[1] == '/') { break; }
-			if (remaining_text[0] == '/' && remaining_text[1] == '*') { break; }
-			remaining_text++;
-		}
-		if (!*remaining_text) { return cmd_args_raw; }
-	}
-
-	Q_strncpyz(cmd_args_raw, remaining_text, sizeof(cmd_args_raw));
-	return cmd_args_raw;
+    static	char	cmd_args_raw[BIG_INFO_STRING];
+    char		*remaining_text;
+    int		argc = 0;
+    qboolean	ignoreQuotes = qfalse;
+    
+    cmd_args_raw[0] = '\0';
+    if (arg < 0) { arg = 0; }
+    remaining_text = cmd_cmd;
+    
+    while (qtrue) {
+        while (qtrue) {
+            while (*remaining_text && *remaining_text <= ' ') { remaining_text++; }
+            if (!*remaining_text) { return cmd_args_raw; }
+            if (remaining_text[0] == '/' && remaining_text[1] == '/') {
+                return cmd_args_raw; }
+            if (remaining_text[0] == '/' && remaining_text[1] == '*') {
+                while (*remaining_text &&
+                       (remaining_text[0] != '*' || remaining_text[1] != '/')) {
+                    remaining_text++;
+                }
+                if (!*remaining_text) { return cmd_args_raw; }
+                remaining_text += 2;
+            }
+            else { break; }
+        }
+        if (argc == arg) { break; }
+        if (!ignoreQuotes && *remaining_text == '"') {
+            argc++;
+            remaining_text++;
+            while (*remaining_text && *remaining_text != '"') { remaining_text++; }
+            if (!*remaining_text) { return cmd_args_raw; }
+            remaining_text++;
+            continue;
+        }
+        argc++;
+        while (*remaining_text > ' ') {
+            if (!ignoreQuotes && *remaining_text == '"') { break; }
+            if (remaining_text[0] == '/' && remaining_text[1] == '/') { break; }
+            if (remaining_text[0] == '/' && remaining_text[1] == '*') { break; }
+            remaining_text++;
+        }
+        if (!*remaining_text) { return cmd_args_raw; }
+    }
+    
+    Q_strncpyz(cmd_args_raw, remaining_text, sizeof(cmd_args_raw));
+    return cmd_args_raw;
 }
+
 
 /*
 ============
@@ -496,7 +535,7 @@ void Cmd_Args_Sanitize( void ) {
 	int i;
 	for ( i = 1 ; i < cmd_argc ; i++ ) {
 		char* c = cmd_argv[i];
-		while ((c = strpbrk(c, "\n\r;"))) {
+		while ((c = strpbrk(c, "\n\r"))) {
 			*c = ' ';
 			++c;
 		}
@@ -658,24 +697,8 @@ void	Cmd_AddCommand( const char *cmd_name, xcommand_t function ) {
 	cmd = S_Malloc (sizeof(cmd_function_t));
 	cmd->name = CopyString( cmd_name );
 	cmd->function = function;
-	cmd->complete = NULL;
 	cmd->next = cmd_functions;
 	cmd_functions = cmd;
-}
-
-/*
-============
-Cmd_SetCommandCompletionFunc
-============
-*/
-void Cmd_SetCommandCompletionFunc( const char *command, completionFunc_t complete ) {
-	cmd_function_t	*cmd;
-
-	for( cmd = cmd_functions; cmd; cmd = cmd->next ) {
-		if( !Q_stricmp( command, cmd->name ) ) {
-			cmd->complete = complete;
-		}
-	}
 }
 
 /*
@@ -716,21 +739,6 @@ void	Cmd_CommandCompletion( void(*callback)(const char *s) ) {
 	
 	for (cmd=cmd_functions ; cmd ; cmd=cmd->next) {
 		callback( cmd->name );
-	}
-}
-
-/*
-============
-Cmd_CompleteArgument
-============
-*/
-void Cmd_CompleteArgument( const char *command, char *args, int argNum ) {
-	cmd_function_t	*cmd;
-
-	for( cmd = cmd_functions; cmd; cmd = cmd->next ) {
-		if( !Q_stricmp( command, cmd->name ) && cmd->complete ) {
-			cmd->complete( args, argNum );
-		}
 	}
 }
 
@@ -825,17 +833,6 @@ void Cmd_List_f (void)
 }
 
 /*
-==================
-Cmd_CompleteCfgName
-==================
-*/
-void Cmd_CompleteCfgName( char *args, int argNum ) {
-	if( argNum == 2 ) {
-		Field_CompleteFilename( "", "cfg", qfalse );
-	}
-}
-
-/*
 ============
 Cmd_Init
 ============
@@ -843,9 +840,9 @@ Cmd_Init
 void Cmd_Init (void) {
 	Cmd_AddCommand ("cmdlist",Cmd_List_f);
 	Cmd_AddCommand ("exec",Cmd_Exec_f);
-	Cmd_SetCommandCompletionFunc( "exec", Cmd_CompleteCfgName );
 	Cmd_AddCommand ("vstr",Cmd_Vstr_f);
-	Cmd_SetCommandCompletionFunc( "vstr", Cvar_CompleteCvarName );
+	Cmd_AddCommand ("+vstr",Cmd_PVstr_f);
+	Cmd_AddCommand ("-vstr",Cmd_PVstr_f);
 	Cmd_AddCommand ("echo",Cmd_Echo_f);
 	Cmd_AddCommand ("wait", Cmd_Wait_f);
 }

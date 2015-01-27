@@ -316,7 +316,7 @@ static InitialVideoOptions_s s_ivo_templates[] =
 	}
 };
 
-#define NUM_IVO_TEMPLATES ( ARRAY_LEN( s_ivo_templates ) )
+#define NUM_IVO_TEMPLATES ( sizeof( s_ivo_templates ) / sizeof( s_ivo_templates[0] ) )
 
 static const char *builtinResolutions[ ] =
 {
@@ -423,7 +423,7 @@ static void GraphicsOptions_CheckConfig( void )
 			continue;
 		if ( s_ivo_templates[i].driver != s_graphicsoptions.driver.curvalue )
 			continue;
-		if ( GraphicsOptions_FindDetectedResolution(s_ivo_templates[i].mode) != s_graphicsoptions.mode.curvalue )
+		if ( s_ivo_templates[i].mode != s_graphicsoptions.mode.curvalue )
 			continue;
 		if ( s_ivo_templates[i].fullscreen != s_graphicsoptions.fs.curvalue )
 			continue;
@@ -555,12 +555,7 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 	if( resolutionsDetected )
 	{
 		// search for builtin mode that matches the detected mode
-		int mode;
-		if ( s_graphicsoptions.mode.curvalue == -1
-			|| s_graphicsoptions.mode.curvalue >= sizeof(detectedResolutions)/sizeof(detectedResolutions[0]) )
-			s_graphicsoptions.mode.curvalue = 0;
-
-		mode = GraphicsOptions_FindBuiltinResolution( s_graphicsoptions.mode.curvalue );
+		int mode = GraphicsOptions_FindBuiltinResolution( s_graphicsoptions.mode.curvalue );
 		if( mode == -1 )
 		{
 			char w[ 16 ], h[ 16 ];
@@ -638,7 +633,7 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 	case ID_LIST:
 		ivo = &s_ivo_templates[s_graphicsoptions.list.curvalue];
 
-		s_graphicsoptions.mode.curvalue        = GraphicsOptions_FindDetectedResolution(ivo->mode);
+		s_graphicsoptions.mode.curvalue        = ivo->mode;
 		s_graphicsoptions.tq.curvalue          = ivo->tq;
 		s_graphicsoptions.lighting.curvalue    = ivo->lighting;
 		s_graphicsoptions.colordepth.curvalue  = ivo->colordepth;
@@ -895,7 +890,7 @@ void GraphicsOptions_MenuInit( void )
 	{
 		char* s = resbuf;
 		unsigned int i = 0;
-		while( s && i < ARRAY_LEN(detectedResolutions)-1 )
+		while( s && i < sizeof(detectedResolutions)/sizeof(detectedResolutions[0])-1)
 		{
 			detectedResolutions[i++] = s;
 			s = strchr(s, ' ');

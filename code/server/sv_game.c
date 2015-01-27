@@ -108,6 +108,21 @@ void SV_GameDropClient( int clientNum, const char *reason ) {
 	SV_DropClient( svs.clients + clientNum, reason );	
 }
 
+#ifdef USE_AUTH
+/*
+===============
+SV_Auth_GameDropClient
+
+Disconnects the client with a public reason and private message
+===============
+*/
+void SV_Auth_GameDropClient( int clientNum, const char *reason, const char *message ) {
+	if ( clientNum < 0 || clientNum >= sv_maxclients->integer ) {
+		return;
+	}
+	SV_Auth_DropClient( svs.clients + clientNum, reason, message );	
+}
+#endif
 
 /*
 =================
@@ -185,17 +200,14 @@ qboolean SV_inPVSIgnorePortals( const vec3_t p1, const vec3_t p2)
 {
 	int		leafnum;
 	int		cluster;
-	int		area1, area2;
 	byte	*mask;
 
 	leafnum = CM_PointLeafnum (p1);
 	cluster = CM_LeafCluster (leafnum);
-	area1 = CM_LeafArea (leafnum);
 	mask = CM_ClusterPVS (cluster);
 
 	leafnum = CM_PointLeafnum (p2);
 	cluster = CM_LeafCluster (leafnum);
-	area2 = CM_LeafArea (leafnum);
 
 	if ( mask && (!(mask[cluster>>3] & (1<<(cluster&7)) ) ) )
 		return qfalse;
@@ -222,7 +234,7 @@ void SV_AdjustAreaPortalState( sharedEntity_t *ent, qboolean open ) {
 
 /*
 ==================
-SV_EntityContact
+SV_GameAreaEntities
 ==================
 */
 qboolean	SV_EntityContact( vec3_t mins, vec3_t maxs, const sharedEntity_t *gEnt, int capsule ) {
@@ -288,619 +300,156 @@ void SV_GetUsercmd( int clientNum, usercmd_t *cmd ) {
 //==============================================
 
 static int	FloatAsInt( float f ) {
-	floatint_t fi;
-	fi.f = f;
-	return fi.i;
-}
-
-// [Guns] Weapons & Items variables
-char weaponforpistol[11] = { 'G', 'H', 'D', 'S', 'J', 'E', 'O', 'Q', 'I', 'N', 'F' };
-char items[5] = { 'D', 'E', 'C', 'A', 'F' };
-char pistols[2] = { 'B', 'C' };
-
-int weaponsnum = sizeof(weaponforpistol);
-int itemsnum = sizeof(items);
-int pistolsnum = sizeof(pistols);
-
-// [Guns] Amo, Nades & Health variables
-int amo[11] = { 100, 50, 40, 10, 20, 30, 60, 80, 70, 90, 255 };
-int nades[12] = { 5, 8, 10, 12, 30, 15, 18, 12, 7, 20, 9, 50 };
-int healths[8] = { 20, 30, 40, 50, 75, 80, 100, 100 };
-char healthops[2] = { '+', '-' };
-
-int amonum = sizeof(amo);
-int nadesnum = sizeof(nades);
-int healthnum = sizeof(healths);
-
-
-/*
-===============
-[Guns]
-SV_NameWeapon
-
-Returns Weapon name
-===============
-*/
-char *SV_NameWeapon(weap2) {
-	char *weapon = " ";
-	if (weap2=='N') {
-		weapon="^6Sr8";
-	}
-	else if (weap2=='O') {
-		weapon="^5AK103";
-	}
-	else if (weap2=='Q') {
-		weapon="^4NEGEV";
-	}
-	else if (weap2=='F') {
-		weapon="^3UMP45";
-	}
-	else if (weap2=='I') {
-		weapon="^5G36";
-	}
-	else if (weap2=='G') {
-		weapon="^1HK69";
-	}
-	else if (weap2=='H') {
-		weapon="^5LR300";
-	}
-	else if (weap2=='D') {
-		weapon="^3Spas";
-	}
-	else if (weap2=='S') {
-		weapon="^5M4A1";
-	}
-	else if (weap2=='J') {
-		weapon="^6PSG1";
-	}
-	else if (weap2=='E') {
-		weapon="^3MP5K";
-	}
-	else if (weap2=='B') {
-		weapon="^2Beretta";
-	}
-	else if (weap2=='C') {
-		weapon="^2Desert Eagle";
-	}
-	else if (weap2=='K') {
-		weapon="^1HE Grenades";
-	}
-	return weapon;
-}
-
-/*
-===============
-[Guns]
-SV_NameItem
-
-Returns Item name
-===============
-*/
-char *SV_NameItem(item2) {
-	char *item = " ";
-	if (item2=='D') {
-		item="Silencer";
-	}
-	else if (item2=='E') {
-		item="Laser Sight";
-	}
-	else if (item2=='C') {
-		item="Ultra Medkit";
-	}
-	else if (item2=='A') {
-		item="Kevlar";
-	}
-	else if (item2=='F') {
-		item="Helmet";
-	}
-	return item;
-}
-
-/*
-===============
-[Guns]
-SV_GetRandomWeapon
-
-Returns a random weapon (that the client don't have)
-@FIXME: We should improve this by checking player's current weapons
-===============
-*/
-char SV_GetRandomWeapon( client_t *cl ) {
-	char		weapon;
-	int			random;
-	int			i;
-	int			qtrues;
-
-	qtrues = 0;
-		
-	for ( i = 0; i < weaponsnum; i++ ) {
-		if ( cl->weapongivenforpistol[i] == qtrue ) {
-			qtrues++;
-		}
-	}
-		
-	if ( qtrues == weaponsnum ) {
-		for ( i = 0; i < weaponsnum; i++ ) {
-			cl->weapongivenforpistol[i] = qfalse;
-		}
-	}
+	union
+	{
+	    int i;
+	    float f;
+	} temp;
 	
-	//Pistol Kill
-    TRYAGAINPISTOL:
-		
-		random = rand() % weaponsnum;
-		// If you already have the weap do a new random
-		if ( cl->weapongivenforpistol[random] == qtrue ) {
-			goto TRYAGAINPISTOL;
-		}
-		else {
-			weapon = weaponforpistol[random];
-			cl->weapongivenforpistol[random] = qtrue;
-			return weapon;
-		}
+	temp.f = f;
+	return temp.i;
+}
+/*
+==================
+SV_GetPlayerNumber
+
+Modification of SV_GetPlayerByHandle to returns the player number insteat of client_t object
+==================
+*/
+static int *SV_GetPlayerNumber(const char *arg) {
+    char        *s;
+    char        name[64];
+    int         count = 0;
+    int         i, idnum;
+    client_t    *cl;
+    client_t    *matches[MAX_CLIENTS];
+    
+    s = arg;
+    
+    // check whether this is a numeric player handle
+    for (i = 0; s[i] >= '0' && s[i] <= '9'; i++);
+    
+    if (!s[i]) {
+        // numeric player handle given as input
+        idnum = atoi(s);
+        if ((idnum < 0) || (idnum >= sv_maxclients->integer)) {
+            Com_Printf("Bad client slot: %i\n", idnum);
+            return -1;
+        }
+        
+        cl = &svs.clients[idnum];
+        
+        if (!cl->state) {
+            Com_Printf("Client in slot %i is not connected\n", idnum);
+            return -1;
+        }
+        
+        return idnum;
+        
+    } else {
+        
+        // full/partial player name given as input
+        for (i = 0; i < sv_maxclients->integer ; i++) {
+            
+            cl = &svs.clients[i];
+            
+            // client is not connected
+            if (!cl->state) {
+                continue;
+            }
+            
+            strcpy(name, cl->name);
+            Q_CleanStr(name);
+            
+            // check for exact match
+            if (!Q_stricmp(name,s)) {
+                return i;
+                matches[0] = &svs.clients[i];
+                count = 1;
+                break;
+            }
+            
+            // check for substring match
+            if (Q_strisub(name, s)) {
+                idnum = i;
+                matches[count] = &svs.clients[i];
+                count++;
+            }
+            
+        }
+        
+        if (count == 0) {
+            
+            // no match found for the given input string
+            Com_Printf("No client found matching %s\n", s);
+            return -1;
+            
+        } else if (count > 1) {
+            
+            // multiple matches found for the given string
+            Com_Printf("Multiple clients found matching %s:\n", s);
+            
+            for (i = 0; i < count; i++) {
+                cl = matches[i];
+                strcpy(name, cl->name);
+                Com_Printf(" %2d: [%s]\n", (int)(cl - svs.clients), name);
+            }
+            
+            return -1;
+        }
+        
+        // found just 1 match
+        return idnum;
+    }
+    
 }
 
 /*
-===============
-[Guns]
-SV_GetRandomItem
+==================
+SV_GiveWeapon_f
 
-Returns a random item (that the client don't have)
-@FIXME: We should improve this by checking player's current items
-===============
+Give a weapon to the player
+==================
 */
-char SV_GetRandomItem( client_t *cl ) {
-	char		item;
-	int			random;
-	int			i;
-	int			qtrues;
+static void SV_GiveWeapon_f(void) {
+    int             h;
+    client_t        *cl;
+    playerState_t   *ps;
+    int             clnum;
+    int             amount;
+    
+    int             weapon;
+    int             weaponstate;
 
-	qtrues = 0;
-		
-	for ( i = 0; i < itemsnum; i++ ) {
-		if ( cl->gunitems[i] == qtrue ) {
-			qtrues++;
-		}
-	}
-		
-	if ( qtrues == itemsnum ) {
-		for ( i = 0; i < itemsnum; i++ ) {
-			cl->gunitems[i] = qfalse;
-		}
-	}
+    // make sure server is running
+    if (!com_sv_running->integer ) {
+        Com_Printf("Server is not running\n");
+        return;
+    }
+    
+    if ((Cmd_Argc() < 2) || (Cmd_Argc() > 3)) {
+        Com_Printf ("Usage: giveweapon <client> <weapon>\n");
+        return;
+    }
+    
+    clnum = SV_GetPlayerNumber(Cmd_Argv(1));
 
-	
-    TRYAGAINITEM:
-
-		random = rand() % itemsnum;
-		// If you already have the item do a new item
-		if ( cl->gunitems[random] == qtrue ) {
-			goto TRYAGAINITEM;
-		}
-		else {
-			item = items[random];
-			cl->gunitems[random] = qfalse;
-			return item;
-		}
+    if (clnum == -1) {
+        return;
+    }
+    Com_Printf("Client num: %d\n",clnum);
+    /*
+    base = &sv.svEntities[0].baseline;
+    //if (!base->number) {
+    Com_Printf ("otherentitynum: %d\n",base->otherEntityNum);
+    Com_Printf ("ground: %d\n",base->groundEntityNum);
+    Com_Printf ("weapon: %d\n",base->weapon);
+    Com_Printf ("powerups: %d\n",base->powerups);
+    //}  
+    //base->weapon;
+     */
 }
 
-/*
-===============
-[Guns]
-SV_ClientSpawn_Guns
-
-Set all weapons and items to qfalse (start guns) when the client spawns
-@FIXME: We should remove this method when checking player's current weapons
-===============
-*/
-void SV_ClientSpawn_Guns( int clID ) {
-	client_t		*cl;
-	playerState_t	*ps;
-	int				i;
-
-	cl = &svs.clients[ clID ];
-	ps = SV_GameClientNum( clID );
-	
-	// IF client spawn all the "have weapon" qboolean are set to qfalse
-	for ( i = 0; i < weaponsnum; i++ ) {
-		cl->weapongivenforpistol[i] = qfalse;
-		if (i < itemsnum) {
-			cl->gunitems[i] = qfalse;
-		}
-	}
-}
-
-/*
-===============
-[Guns]
-SV_Event_Kill_Guns
-
-Give [Guns] rewards to the killer
-@FIXME: Ideas for Automatics..?
-===============
-*/
-void SV_Event_Kill_Guns( char *killer, char *killed, char *wpn ) {
-	client_t		*clkilled;
-	client_t		*clkiller;
-	playerState_t	*pskilled;
-	playerState_t	*pskiller;
-
-	int skiller = atoi( killer );
-	clkilled = &svs.clients[ atoi(killed) ];
-	clkiller = &svs.clients[ atoi(killer) ];
-	pskilled = SV_GameClientNum( atoi(killed) );
-	pskiller = SV_GameClientNum( atoi(killer) );
-
-	SV_ClientSpawn_Guns( atoi( killed ) );
-	// If the killer is not the world
-	if ( atoi(killer) != -1 ) {
-	
-		// If the killer is not the killed (suicide)
-		if ( atoi(killer) != atoi(killed) ) {
-			// Knife
-			if (!Q_stricmp( wpn, "12:" )) {
-				int health2 = healths[rand()%8];
-				Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Knife ^7kill ^1= ^7Health: ^2+%i\"", health2);
-			}
-			if (!Q_stricmp( wpn, "13:" )) {
-				char item = SV_GetRandomItem( clkiller );
-				Cmd_ExecuteString (va("gi %i %c", skiller, item));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Throwing Knife ^7kill ^1= ^6%s\"", SV_NameItem(item));
-			}
-			// Beretta
-			if (!Q_stricmp( wpn, "14:" )) {
-				char weapon = SV_GetRandomWeapon( clkiller );
-				Cmd_ExecuteString (va("gw %i %c", skiller, weapon));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^2Beretta ^7kill ^1= %s\"", SV_NameWeapon(weapon));
-			}
-			// Desert Eagle
-			else if (!Q_stricmp( wpn, "15:" )) {
-				char weapon = SV_GetRandomWeapon( clkiller );
-				Cmd_ExecuteString (va("gw %i %c", skiller, weapon));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^2Desert Eagle ^7kill ^1= %s\"", SV_NameWeapon(weapon));
-			}
-			// Spas
-			else if (!Q_stricmp( wpn, "16:" )) {
-				int random = rand() % weaponsnum;
-				char weapon = weaponforpistol[random];
-				int amo2 = amo[rand()%11];
-				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, amo2));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3Spas ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
-				clkiller->weapongivenforpistol[random] = qtrue;
-			}
-			// UMP45
-			else if (!Q_stricmp( wpn, "17:" )) {
-				char weapon = 'B';
-				Cmd_ExecuteString (va("gw %i %c +30", skiller, weapon));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3UMP45 ^7kill ^1= %s ^4+30\"", SV_NameWeapon(weapon));
-			}
-			// MP5K
-			else if (!Q_stricmp( wpn, "18:" )) {
-				char weapon = 'C';
-				Cmd_ExecuteString (va("gw %i %c +15", skiller, weapon));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^3MP5K ^7kill ^1= %s ^4+15\"", SV_NameWeapon(weapon));
-			}
-			// LR
-			// else if (!Q_stricmp( wpn, "19:" )) {
-
-			// }
-			// G36
-			// else if (!Q_stricmp( wpn, "20:" )) {
-
-			// }
-			// PSG1
-			else if (!Q_stricmp( wpn, "21:" )) {
-				char weapon = 'K';
-				int nades2 = nades[rand()%12];
-				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, nades2));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6PSG1 ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), nades2);
-			}
-			// HK69
-			else if ((!Q_stricmp( wpn, "22:" )) || (!Q_stricmp( wpn, "37:" ))) {
-				int health2 = healths[rand()%8];
-				char operator = healthops[rand()%2];
-				Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
-				if (operator == '-') {
-					SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1HK69 ^7kill ^1= ^7Random Health: ^1-%i\"", health2);
-				}
-				else if (operator == '+') {
-					SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1HK69 ^7kill ^1= ^7Random Health: ^2+%i\"", health2);
-				}		
-			}
-			// BLEED
-			else if (!Q_stricmp( wpn, "23:" )) {
-				char item = SV_GetRandomItem( clkiller );
-				Cmd_ExecuteString (va("gi %i %c", skiller, item));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1Bleeding ^7kill ^1= ^6%s\"", SV_NameItem(item));
-			}
-			// BOOT (KICKED)
-			else if (!Q_stricmp( wpn, "24:" )) {
-				int health2 = healths[rand()%8];
-				Cmd_ExecuteString (va("gh %i +%i", skiller, health2));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Boot ^7kill ^1= ^7Health: ^2+%i\"", health2);
-			}
-			// HE NADE
-			else if (!Q_stricmp( wpn, "25:" )) {
-				char item = SV_GetRandomItem( clkiller );
-				Cmd_ExecuteString (va("gi %i %c", skiller, item));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^1HE Grenade ^7kill ^1= ^6%s\"", SV_NameItem(item));
-			}
-			// SR8
-			else if (!Q_stricmp( wpn, "28:" )) {
-				char weapon = 'K';
-				int nades2 = nades[rand()%12];
-				Cmd_ExecuteString (va("gw %i %c +%i", skiller, weapon, nades2));
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Sr8 ^7kill ^1= %s ^4+%i\"", SV_NameWeapon(weapon), nades2);
-			}
-			// AK103
-			// else if (!Q_stricmp( wpn, "30:" )) {
-
-			// }
-			// NEGEV
-			else if (!Q_stricmp( wpn, "35:" )) {
-				int health2 = healths[rand()%8];
-				char operator = healthops[rand()%2];
-				Cmd_ExecuteString (va("gh %i %c%i", skiller, operator, health2));
-				if (operator == '-') {
-					SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^4NEGEV ^7kill ^1= ^7Random Health: ^1-%i\"", health2);
-				}
-				else if (operator == '+') {
-					SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^4NEGEV ^7kill ^1= ^7Random Health: ^2+%i\"", health2);
-				}
-			}
-			// M4
-			// else if (!Q_stricmp( wpn, "38:" )) {
-
-			// }
-			// CURB (GOOMBA)
-			else if (!Q_stricmp( wpn, "40:" )) {
-				int i;
-				for ( i = 0; i < weaponsnum; i++ ) {
-					Cmd_ExecuteString (va("gw %i %c 100 100", skiller, weaponforpistol[i]));
-					if (i < pistolsnum) {
-						Cmd_ExecuteString (va("gw %i %c 100 100", skiller, pistols[i]));
-					}
-					if (i < itemsnum) {
-						Cmd_ExecuteString (va("gi %i %c", skiller, items[i]));
-					}
-				}
-				SV_SendServerCommand(clkiller, "chat \"^7[^4Guns^7] ^6Curb Stomp ^7kill ^1= ^5All Weapons with ^4100^7 Bullets and all ^6Items\"");
-				Cmd_ExecuteString (va("bigtext \"%s made a ^6Curb Stomp^7!! he won ^5All Weapons ^7with ^4100 ^7bullets and all ^6Items\"", clkiller->name));
-			}
-		}
-	}
-}
-
-
-/*
-===============
-[Guns]
-SV_FlagTaken_Guns
-
-Event called when a client takes a flag
-===============
-*/
-void SV_FlagTaken_Guns( char *client ) {
-	client_t		*clclient;
-	playerState_t	*psclient;
-
-	clclient = &svs.clients[ atoi(client) ];
-	int sclient = atoi( client );
-	char weapon = weaponforpistol[rand() % weaponsnum];
-	int amo2 = amo[rand()%11];
-	Cmd_ExecuteString (va("gw %i +%c-@", sclient, weapon));
-	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Taken! You saved your weapons and won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
-	Cmd_ExecuteString (va("gw %i %c %i", sclient, weapon, amo2));
-	// Uncomment this to save the weapon given for take the flag
-	// clclient->flagweapon = weapon;
-}
-
-/*
-===============
-[Guns]
-SV_FlagCaptured_Guns
-
-Event called when a client capture a flag
-@FIXME: We should improve this by checking player's old weapons and amo!
-===============
-*/
-void SV_FlagCaptured_Guns( char *client ) {
-	client_t		*clclient;
-	playerState_t	*psclient;
-	char 			pistol;
-
-	int sclient = atoi( client );
-	clclient = &svs.clients[ atoi(client) ];
-	
-	// Comment this for the flagweapon stuff
-	Cmd_ExecuteString (va("gw %i -@", sclient));
-	int i;
-	for ( i = 0; i < weaponsnum; i++ ) {
-		if ( clclient->weapongivenforpistol[i] == qtrue ) {
-			Cmd_ExecuteString (va("gw %i %c", sclient, weaponforpistol[i]));
-		}
-		// Uncomment this to give the weapon won when took the flag
-		// if (weaponforpistol[i] == clclient->flagweapon) {
-		// 	clclient->weapongivenforpistol[i] = qtrue;
-		// }
-	}
-	pistol = pistols[rand()%pistolsnum];
-	Cmd_ExecuteString (va("gw %i %cA", sclient, pistol));
-	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
-
-	// Method to give a random pistol and random amo
-	// char weapon = pistols[rand() % 2];
-	// int amo2 = amo[rand()%11];
-	// Cmd_ExecuteString (va("gw %i %c +%i", sclient, weapon, amo2));
-	// Cmd_ExecuteString (va("gw %i +A", sclient));
-	// SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Captured! You won: %s ^4+%i\"", SV_NameWeapon(weapon), amo2);
-}
-
-
-/*
-===============
-[Guns]
-SV_FlagDropped_Guns
-
-Event called when a client drops a flag
-@FIXME: We should improve this by checking player's old weapons and amo!
-===============
-*/
-void SV_FlagDropped_Guns( char *client ) {
-	client_t		*clclient;
-	playerState_t	*psclient;
-	char 			pistol;
-
-	psclient = SV_GameClientNum( atoi(client) );
-	int sclient = atoi( client );
-	clclient = &svs.clients[ atoi(client) ];
-
-	if (psclient->stats[STAT_HEALTH] < 1) {
-		return;
-	}
-
-	int i;
-	Cmd_ExecuteString (va("gw %i -@", sclient));
-	for ( i = 0; i < weaponsnum; i++ ) {
-		if ( clclient->weapongivenforpistol[i] == qtrue ) {
-			Cmd_ExecuteString (va("gw %i %c", sclient, weaponforpistol[i]));
-		}
-	}
-	pistol = pistols[rand()%pistolsnum];
-	Cmd_ExecuteString (va("gw %i %cA", sclient, pistol));
-	SV_SendServerCommand(clclient, "chat \"^7[^4Guns^7] ^5Flag ^7Dropped! Your old weapons and ^2%s\"", SV_NameWeapon(pistol));
-}
-
-/*
-===============
-[Guns]
-SV_Guns_EVS
-
-Handle Guns events
-===============
-*/
-void SV_Guns_EVS( char *args0, char *args1, char *args2, char *args3 ) {
-	// On player kill
-	if( !Q_stricmp( args0, "Kill:" ) ) {
-		SV_Event_Kill_Guns( args1, args2, args3 );
-	}
-	// On player spawn (UrT 4.2)
-	else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
-		SV_ClientSpawn_Guns( atoi( args1 ) );
-	}
-	// On Flag Taken
-	else if( (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_redflag")) || (!Q_stricmp( args0, "Item:" ) && !Q_stricmp( args2, "team_CTF_blueflag")) ) {
-		SV_FlagTaken_Guns( args1 );
-	}
-	// On Flag Captured
-	else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "2:") ) {
-		SV_FlagCaptured_Guns( args1 );
-	}
-	else if(!Q_stricmp( args0, "Flag:" ) && !Q_stricmp( args2, "0:") ) {
-		SV_FlagDropped_Guns( args1 );
-	}
-}
-
-/*
-====================
-[Money]
-SV_StartUserMoney
-
-Set user's money at start, called at "ClientConnect:"
-@Fixme: We need to read user's money from a file (to make money permanent)
-====================
-*/
-void SV_StartUserMoney ( char *client ) {
-	client_t		*cl;
-	cl = &svs.clients[ atoi(client) ];
-	int money = cl->money;
-	
-	/*
-	====================
-	Here the method to read money from usermoney.dat
-
-	After we find the money for the cl_guid:
-	cl->money = "money inside the file";
-	====================
-	*/
-}
-
-/*
-====================
-[Money]
-SV_SaveUserMoney
-
-Update user's money, called at "ClientDisconnect:"
-@Fixme: We need to save user's money in the usermoney.dat
-====================
-*/
-void SV_SaveUserMoney ( char *client ) {
-	client_t		*cl;
-	cl = &svs.clients[ atoi(client) ];
-	int money = cl->money;
-	
-	/*
-	====================
-	Here the method to read money from usermoney.dat
-	====================
-	*/
-}
-
-/*
-===============
-[Money]
-SV_ClientSpawn_Money
-
-We will use this function for the autobuy stuff
-===============
-*/
-void SV_ClientSpawn_Money( int clID ) {
-	return;
-}
-
-/*
-===============
-[Money]
-SV_Event_Kill_Money
-
-Give money to the killer for the kill
-===============
-*/
-void SV_Event_Kill_Money( char *killer, char *killed, char *wpn ) {
-	client_t		*clkiller;
-
-	int skiller = atoi( killer );
-	clkiller = &svs.clients[ atoi(killer) ];
-
-	if ( atoi(killer) != -1 ) {
-	
-		// If the killer is not the killed (suicide)
-		if ( atoi(killer) != atoi(killed) ) {
-			clkiller->money += 50; // 20 after we finish the "permanent save"
-			SV_SendServerCommand(clkiller, "chat \"^7[^2Money^7] Your money: ^2+%i $\"", clkiller->money);
-		}
-	}
-}
-
-/*
-===============
-[Money]
-SV_Money_EVS
-
-Handle Money events
-===============
-*/
-void SV_Money_EVS( char *args0, char *args1, char *args2, char *args3 ) {
-	// On player kill
-	if( !Q_stricmp( args0, "Kill:" ) ) {
-		SV_Event_Kill_Money( args1, args2, args3 );
-	}
-	// On player spawn (UrT 4.2)
-	// else if( !Q_stricmp( args0, "ClientSpawn:" ) ) {
-	// 	SV_ClientSpawn_Money( atoi( args1 ) );
-	// }
-}
 
 /*
 ====================
@@ -910,22 +459,17 @@ Filter QVM prints
 ====================
 */
 void Check_Com_Printf ( const char *text ) {
-	static char data[BIG_INFO_STRING];
-	
-	data[0] = '\0';
+    static char data[BIG_INFO_STRING];
+    
+    data[0] = '\0';
     Q_strncpyz( data, text, sizeof( data ) );
-	
-	Cmd_TokenizeString(data);
+    
+    Cmd_TokenizeString(data);
+    
+    Com_Printf( "%s",text );
 
-	if (sv_Guns->integer > 0) {
-		SV_Guns_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
-	}
-	if (sv_Money->integer > 0) {
-		SV_Money_EVS( Cmd_Argv(0), Cmd_Argv(1), Cmd_Argv(2), Cmd_Argv(3) );
-	}
-	
-	Com_Printf( text );
 }
+
 
 /*
 ====================
@@ -935,16 +479,10 @@ The module is making a system call
 ====================
 */
 intptr_t SV_GameSystemCalls( intptr_t *args ) {
-	static	char		*path;
-	static	char		*extension;
-	static	char		*mapname;
-	static	qboolean	unloadUnusedMaps;
-	static	char		fixedMapname[MAX_QPATH];
-	static	char		nextmapCommand[MAX_QPATH + 32];
-
 	switch( args[0] ) {
 	case G_PRINT:
-		Check_Com_Printf( va( "%s", (const char*)VMA(1) ) );
+		//Com_Printf( "%s", (const char*)VMA(1) );
+        Check_Com_Printf( va( "%s", (const char*)VMA(1) ) );
 		return 0;
 	case G_ERROR:
 		Com_Error( ERR_DROP, "%s", (const char*)VMA(1) );
@@ -971,31 +509,6 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		Cmd_ArgvBuffer( args[1], VMA(2), args[3] );
 		return 0;
 	case G_SEND_CONSOLE_COMMAND:
-		// Intercept nextmap callvotes.  We're not going to intercept deliberate action by the admin.
-		// When a "callvote nextmap mapname" vote passes, VMA(2) will be exactly "g_nextmap mapname\n".
-		Cmd_TokenizeString((const char *) VMA(2));
-		if (!strcmp(Cmd_Argv(0), "g_nextmap")) {
-			if (strlen((mapname = Cmd_Argv(1))) > 0) {
-				if (sv_loadOnlyNeededPaks->latchedString) {
-					unloadUnusedMaps = (atoi(sv_loadOnlyNeededPaks->latchedString) > 0);
-				}
-				else {
-					unloadUnusedMaps = (sv_loadOnlyNeededPaks->integer > 0);
-				}
-				if (!FS_CanLoadMapBsp(unloadUnusedMaps, (sv_pure->integer != 0), mapname,
-								fixedMapname, sizeof(fixedMapname), NULL, 0)) {
-					SV_SendServerCommand(NULL, "print \"Server: g_NextMap unchanged (invalid map in vote)\n\"");
-					return 0;
-				}
-				Com_sprintf(nextmapCommand, sizeof(nextmapCommand), "g_nextmap \"%s\"\n", fixedMapname);
-				Cbuf_ExecuteText(args[1], nextmapCommand);
-				return 0;
-			}
-			else {
-				Cbuf_ExecuteText(args[1], "g_nextmap \"\"\n");
-				return 0;
-			}
-		}
 		Cbuf_ExecuteText( args[1], VMA(2) );
 		return 0;
 
@@ -1011,26 +524,7 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		FS_FCloseFile( args[1] );
 		return 0;
 	case G_FS_GETFILELIST:
-		// This is called during a cyclemap (when g_NextMap isn't set)
-		// to check for a bsp file in a maps folder.
-		path = VMA(1);
-		extension = VMA(2);
-		// Check strictly greater than length 4 because the game code passes full map bsp name
-		// as extension.  If it passes just ".bsp" as extension, use the real FS_GetFileList().
-		if (!strcmp("maps", path) && strlen(extension) > 4 &&
-				!strcmp(".bsp", extension + (strlen(extension) - 4))) {
-			qboolean unloadUnusedMaps;
-			if (sv_loadOnlyNeededPaks->latchedString) {
-				unloadUnusedMaps = (atoi(sv_loadOnlyNeededPaks->latchedString) > 0);
-			}
-			else {
-				unloadUnusedMaps = (sv_loadOnlyNeededPaks->integer > 0);
-			}
-			return FS_GetFileList_UrtServerHack(unloadUnusedMaps, (sv_pure->integer != 0),
-								extension, VMA(3), args[4]);
-		}
-		// Use the normal FS_GetFileList().
-		return FS_GetFileList(path, extension, VMA(3), args[4]);
+		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 	case G_FS_SEEK:
 		return FS_Seek( args[1], args[2], args[3] );
 
@@ -1040,6 +534,13 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case G_DROP_CLIENT:
 		SV_GameDropClient( args[1], VMA(2) );
 		return 0;
+
+#ifdef USE_AUTH
+	case G_AUTH_DROP_CLIENT:
+		SV_Auth_GameDropClient( args[1], VMA(2), VMA(3) );
+		return 0;
+#endif
+		
 	case G_SEND_SERVER_COMMAND:
 		SV_GameSendServerCommand( args[1], VMA(2) );
 		return 0;
@@ -1057,6 +558,9 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return SV_EntityContact( VMA(1), VMA(2), VMA(3), /*int capsule*/ qtrue );
 	case G_TRACE:
 		SV_Trace( VMA(1), VMA(2), VMA(3), VMA(4), VMA(5), args[6], args[7], /*int capsule*/ qfalse );
+            if (sv_noFallDamage->integer>0) {
+                ((trace_t*)(VMA(1)))->surfaceFlags |= SURF_NODAMAGE;
+            }    
 		return 0;
 	case G_TRACECAPSULE:
 		SV_Trace( VMA(1), VMA(2), VMA(3), VMA(4), VMA(5), args[6], args[7], /*int capsule*/ qtrue );
@@ -1490,6 +994,27 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case BOTLIB_AI_GENETIC_PARENTS_AND_CHILD_SELECTION:
 		return botlib_export->ai.GeneticParentsAndChildSelection(args[1], VMA(2), VMA(3), VMA(4), VMA(5));
 
+	//@Barbatos
+	#ifdef USE_AUTH
+	case G_NET_STRINGTOADR:
+		return NET_StringToAdr( VMA(1), VMA(2));
+		
+	case G_NET_SENDPACKET:
+		{
+			netadr_t addr;
+			const char * destination = VMA(4);     
+			
+			NET_StringToAdr( destination, &addr );                                                                                                                                                                                                                                   
+			NET_SendPacket( args[1], args[2], VMA(3), addr ); 
+		}
+		return 0;
+	
+	//case G_SYS_STARTPROCESS:
+	//	Sys_StartProcess( VMA(1), VMA(2) );
+	//	return 0;
+		
+	#endif
+	
 	case TRAP_MEMSET:
 		Com_Memset( VMA(1), args[2], args[3] );
 		return 0;
@@ -1532,10 +1057,11 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case TRAP_CEIL:
 		return FloatAsInt( ceil( VMF(1) ) );
 
-
 	default:
 		Com_Error( ERR_DROP, "Bad game system trap: %ld", (long int) args[0] );
+		break;
 	}
+
 	return -1;
 }
 
@@ -1617,6 +1143,7 @@ void SV_InitGameProgs( void ) {
 	cvar_t	*var;
 	//FIXME these are temp while I make bots run in vm
 	extern int	bot_enable;
+	int i;
 
 	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
 	if ( var ) {
@@ -1624,6 +1151,16 @@ void SV_InitGameProgs( void ) {
 	}
 	else {
 		bot_enable = 0;
+	}
+
+	// Barbatos - force a DNS lookup for the master servers
+	// This way server admins don't have to restart their
+	// servers when a master server IP changes.
+	for ( i = 0 ; i < MAX_MASTER_SERVERS ; i++ ) {
+		if ( !sv_master[i]->string[0] ) {
+			continue;
+		}
+		sv_master[i]->modified = qtrue;
 	}
 
 	// load the dll or bytecode

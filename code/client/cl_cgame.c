@@ -25,8 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../botlib/botlib.h"
 
-#include "libmumblelink.h"
-
 extern	botlib_export_t	*botlib_export;
 
 extern qboolean loadCamera(const char *name);
@@ -298,9 +296,9 @@ rescan:
 		// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=552
 		// allow server to indicate why they were disconnected
 		if ( argc >= 2 )
-			Com_Error( ERR_SERVERDISCONNECT, "Server disconnected - %s", Cmd_Argv( 1 ) );
+			Com_Error (ERR_SERVERDISCONNECT, va( "Server Disconnected - %s", Cmd_Argv( 1 ) ) );
 		else
-			Com_Error( ERR_SERVERDISCONNECT, "Server disconnected\n" );
+			Com_Error (ERR_SERVERDISCONNECT,"Server disconnected\n");
 	}
 
 	if ( !strcmp( cmd, "bcs0" ) ) {
@@ -389,7 +387,7 @@ CL_ShutdonwCGame
 ====================
 */
 void CL_ShutdownCGame( void ) {
-	Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_CGAME );
+	cls.keyCatchers &= ~KEYCATCH_CGAME;
 	cls.cgameStarted = qfalse;
 	if ( !cgvm ) {
 		return;
@@ -400,9 +398,11 @@ void CL_ShutdownCGame( void ) {
 }
 
 static int	FloatAsInt( float f ) {
-	floatint_t fi;
-	fi.f = f;
-	return fi.i;
+	int		temp;
+
+	*(float *)&temp = f;
+
+	return temp;
 }
 
 /*
@@ -546,6 +546,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return re.RegisterShaderNoMip( VMA(1) );
 	case CG_R_REGISTERFONT:
 		re.RegisterFont( VMA(1), args[2], VMA(3));
+		return 0;
 	case CG_R_CLEARSCENE:
 		re.ClearScene();
 		return 0;
@@ -607,8 +608,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
   case CG_KEY_GETCATCHER:
 		return Key_GetCatcher();
   case CG_KEY_SETCATCHER:
-		// Don't allow the cgame module to close the console
-		Key_SetCatcher( args[1] | ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) );
+		Key_SetCatcher( args[1] );
     return 0;
   case CG_KEY_GETKEY:
 		return Key_GetKey( VMA(1) );
@@ -698,9 +698,11 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return re.inPVS( VMA(1), VMA(2) );
 
 	default:
-	        assert(0);
+	    assert(0); // bk010102
 		Com_Error( ERR_DROP, "Bad cgame system trap: %ld", (long int) args[0] );
+		break;
 	}
+
 	return 0;
 }
 
@@ -907,52 +909,8 @@ void CL_FirstSnapshot( void ) {
 		Cbuf_AddText( cl_activeAction->string );
 		Cvar_Set( "activeAction", "" );
 	}
-
-#ifdef USE_MUMBLE
-	if ((cl_useMumble->integer) && !mumble_islinked()) {
-		int ret = mumble_link(CLIENT_WINDOW_TITLE);
-		Com_Printf("Mumble: Linking to Mumble application %s\n", ret==0?"ok":"failed");
-	}
-#endif
-
-#ifdef USE_VOIP
-	if (!clc.speexInitialized) {
-		int i;
-		speex_bits_init(&clc.speexEncoderBits);
-		speex_bits_reset(&clc.speexEncoderBits);
-
-		clc.speexEncoder = speex_encoder_init(&speex_nb_mode);
-
-		speex_encoder_ctl(clc.speexEncoder, SPEEX_GET_FRAME_SIZE,
-		                  &clc.speexFrameSize);
-		speex_encoder_ctl(clc.speexEncoder, SPEEX_GET_SAMPLING_RATE,
-		                  &clc.speexSampleRate);
-
-		clc.speexPreprocessor = speex_preprocess_state_init(clc.speexFrameSize,
-		                                                  clc.speexSampleRate);
-
-		i = 1;
-		speex_preprocess_ctl(clc.speexPreprocessor,
-		                     SPEEX_PREPROCESS_SET_DENOISE, &i);
-
-		i = 1;
-		speex_preprocess_ctl(clc.speexPreprocessor,
-		                     SPEEX_PREPROCESS_SET_AGC, &i);
-
-		for (i = 0; i < MAX_CLIENTS; i++) {
-			speex_bits_init(&clc.speexDecoderBits[i]);
-			speex_bits_reset(&clc.speexDecoderBits[i]);
-			clc.speexDecoder[i] = speex_decoder_init(&speex_nb_mode);
-			clc.voipIgnore[i] = qfalse;
-			clc.voipGain[i] = 1.0f;
-		}
-		clc.speexInitialized = qtrue;
-		clc.voipMuteAll = qfalse;
-		Cmd_AddCommand ("voip", CL_Voip_f);
-		Cvar_Set("cl_voipSendTarget", "all");
-		clc.voipTarget1 = clc.voipTarget2 = clc.voipTarget3 = 0x7FFFFFFF;
-	}
-#endif
+	
+	Sys_BeginProfiling();
 }
 
 /*
@@ -1055,35 +1013,9 @@ void CL_SetCGameTime( void ) {
 	// while a normal demo may have different time samples
 	// each time it is played back
 	if ( cl_timedemo->integer ) {
-		int now = Sys_Milliseconds( );
-		int frameDuration;
-
 		if (!clc.timeDemoStart) {
-			clc.timeDemoStart = clc.timeDemoLastFrame = now;
-			clc.timeDemoMinDuration = INT_MAX;
-			clc.timeDemoMaxDuration = 0;
+			clc.timeDemoStart = Sys_Milliseconds();
 		}
-
-		frameDuration = now - clc.timeDemoLastFrame;
-		clc.timeDemoLastFrame = now;
-
-		// Ignore the first measurement as it'll always be 0
-		if( clc.timeDemoFrames > 0 )
-		{
-			if( frameDuration > clc.timeDemoMaxDuration )
-				clc.timeDemoMaxDuration = frameDuration;
-
-			if( frameDuration < clc.timeDemoMinDuration )
-				clc.timeDemoMinDuration = frameDuration;
-
-			// 255 ms = about 4fps
-			if( frameDuration > UCHAR_MAX )
-				frameDuration = UCHAR_MAX;
-
-			clc.timeDemoDurations[ ( clc.timeDemoFrames - 1 ) %
-				MAX_TIMEDEMO_DURATIONS ] = frameDuration;
-		}
-
 		clc.timeDemoFrames++;
 		cl.serverTime = clc.timeDemoBaseTime + clc.timeDemoFrames * 50;
 	}

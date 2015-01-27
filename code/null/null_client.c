@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#include "../qcommon/q_shared.h"
-#include "../qcommon/qcommon.h"
+#include "../client/client.h"
 
 cvar_t *cl_shownet;
 
@@ -41,6 +40,10 @@ void Key_WriteBindings( fileHandle_t f ) {
 void CL_Frame ( int msec ) {
 }
 
+qboolean CL_IsDownloading(void) {
+	return qfalse;
+}
+
 void CL_PacketEvent( netadr_t from, msg_t *msg ) {
 }
 
@@ -54,7 +57,7 @@ void CL_MapLoading( void ) {
 }
 
 qboolean CL_GameCommand( void ) {
-  return qfalse;
+  return qfalse; // bk001204 - non-void
 }
 
 void CL_KeyEvent (int key, qboolean down, unsigned time) {
@@ -82,9 +85,11 @@ void CL_CDDialog( void ) {
 void CL_FlushMemory( void ) {
 }
 
-void CL_StartHunkUsers( qboolean rendererOnly ) {
+void CL_StartHunkUsers( void ) {
 }
 
+// bk001119 - added new dummy for sv_init.c
 void CL_ShutdownAll(void) {}
 
+// bk001208 - added new dummy (RC4)
 qboolean CL_CDKeyValidate( const char *key, const char *checksum ) { return qtrue; }

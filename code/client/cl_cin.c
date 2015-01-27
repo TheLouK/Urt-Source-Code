@@ -53,6 +53,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MAX_VIDEO_HANDLES	16
 
 extern glconfig_t glConfig;
+extern	int		s_paintedtime;
+extern	int		s_rawend;
 
 
 static void RoQ_init( void );
@@ -135,6 +137,7 @@ static int				currentHandle = -1;
 static int				CL_handle = -1;
 
 extern int				s_soundtime;		// sample PAIRS
+extern int   			s_paintedtime; 		// sample PAIRS
 
 
 void CIN_CloseAllVideos(void) {
@@ -620,10 +623,7 @@ static void decodeCodeBook( byte *input, unsigned short roq_flags )
 	unsigned short	*aptr, *bptr, *cptr, *dptr;
 	long	y0,y1,y2,y3,cr,cb;
 	byte	*bbptr, *baptr, *bcptr, *bdptr;
-	union {
-		unsigned int *i;
-		unsigned short *s;
-	} iaptr, ibptr, icptr, idptr;
+	unsigned int *iaptr, *ibptr, *icptr, *idptr;
 
 	if (!roq_flags) {
 		two = four = 256;
@@ -666,7 +666,7 @@ static void decodeCodeBook( byte *input, unsigned short roq_flags )
 						VQ2TO4(aptr,bptr,cptr,dptr);
 				}
 			} else if (cinTable[currentHandle].samplesPerPixel==4) {
-				ibptr.s = bptr;
+				ibptr = (unsigned int *)bptr;
 				for(i=0;i<two;i++) {
 					y0 = (long)*input++;
 					y1 = (long)*input++;
@@ -674,22 +674,20 @@ static void decodeCodeBook( byte *input, unsigned short roq_flags )
 					y3 = (long)*input++;
 					cr = (long)*input++;
 					cb = (long)*input++;
-					*ibptr.i++ = yuv_to_rgb24( y0, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( y1, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( y2, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( y3, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y0, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y1, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y2, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y3, cr, cb );
 				}
 
-				icptr.s = vq4;
-				idptr.s = vq8;
+				icptr = (unsigned int *)vq4;
+				idptr = (unsigned int *)vq8;
 	
 				for(i=0;i<four;i++) {
-					iaptr.s = vq2;
-					iaptr.i += (*input++)*4;
-					ibptr.s = vq2;
-					ibptr.i += (*input++)*4;
+					iaptr = (unsigned int *)vq2 + (*input++)*4;
+					ibptr = (unsigned int *)vq2 + (*input++)*4;
 					for(j=0;j<2;j++) 
-						VQ2TO4(iaptr.i, ibptr.i, icptr.i, idptr.i);
+						VQ2TO4(iaptr, ibptr, icptr, idptr);
 				}
 			} else if (cinTable[currentHandle].samplesPerPixel==1) {
 				bbptr = (byte *)bptr;
@@ -744,7 +742,7 @@ static void decodeCodeBook( byte *input, unsigned short roq_flags )
 					}
 				}
 			} else if (cinTable[currentHandle].samplesPerPixel==4) {
-				ibptr.s = bptr;
+				ibptr = (unsigned int *)bptr;
 				for(i=0;i<two;i++) {
 					y0 = (long)*input++;
 					y1 = (long)*input++;
@@ -752,27 +750,25 @@ static void decodeCodeBook( byte *input, unsigned short roq_flags )
 					y3 = (long)*input++;
 					cr = (long)*input++;
 					cb = (long)*input++;
-					*ibptr.i++ = yuv_to_rgb24( y0, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( y1, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( ((y0*3)+y2)/4, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( ((y1*3)+y3)/4, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( (y0+(y2*3))/4, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( (y1+(y3*3))/4, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( y2, cr, cb );
-					*ibptr.i++ = yuv_to_rgb24( y3, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y0, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y1, cr, cb );
+					*ibptr++ = yuv_to_rgb24( ((y0*3)+y2)/4, cr, cb );
+					*ibptr++ = yuv_to_rgb24( ((y1*3)+y3)/4, cr, cb );
+					*ibptr++ = yuv_to_rgb24( (y0+(y2*3))/4, cr, cb );
+					*ibptr++ = yuv_to_rgb24( (y1+(y3*3))/4, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y2, cr, cb );
+					*ibptr++ = yuv_to_rgb24( y3, cr, cb );
 				}
 
-				icptr.s = vq4;
-				idptr.s = vq8;
+				icptr = (unsigned int *)vq4;
+				idptr = (unsigned int *)vq8;
 	
 				for(i=0;i<four;i++) {
-					iaptr.s = vq2;
-					iaptr.i += (*input++)*8;
-					ibptr.s = vq2;
-					ibptr.i += (*input++)*8;
+					iaptr = (unsigned int *)vq2 + (*input++)*8;
+					ibptr = (unsigned int *)vq2 + (*input++)*8;
 					for(j=0;j<2;j++) {
-						VQ2TO4(iaptr.i, ibptr.i, icptr.i, idptr.i);
-						VQ2TO4(iaptr.i, ibptr.i, icptr.i, idptr.i);
+						VQ2TO4(iaptr, ibptr, icptr, idptr);
+						VQ2TO4(iaptr, ibptr, icptr, idptr);
 					}
 				}
 			} else if (cinTable[currentHandle].samplesPerPixel==1) {
@@ -848,26 +844,24 @@ static void decodeCodeBook( byte *input, unsigned short roq_flags )
 				}
 			}			
 		} else if (cinTable[currentHandle].samplesPerPixel == 4) {
-			ibptr.s = bptr;
+			ibptr = (unsigned int *) bptr;
 			for(i=0;i<two;i++) {
 				y0 = (long)*input; input+=2;
 				y2 = (long)*input; input+=2;
 				cr = (long)*input++;
 				cb = (long)*input++;
-				*ibptr.i++ = yuv_to_rgb24( y0, cr, cb );
-				*ibptr.i++ = yuv_to_rgb24( y2, cr, cb );
+				*ibptr++ = yuv_to_rgb24( y0, cr, cb );
+				*ibptr++ = yuv_to_rgb24( y2, cr, cb );
 			}
 
-			icptr.s = vq4;
-			idptr.s = vq8;
+			icptr = (unsigned int *)vq4;
+			idptr = (unsigned int *)vq8;
 	
 			for(i=0;i<four;i++) {
-				iaptr.s = vq2;
-				iaptr.i += (*input++)*2;
-				ibptr.s = vq2 + (*input++)*2;
-				ibptr.i += (*input++)*2;
+				iaptr = (unsigned int *)vq2 + (*input++)*2;
+				ibptr = (unsigned int *)vq2 + (*input++)*2;
 				for(j=0;j<2;j++) { 
-					VQ2TO2(iaptr.i,ibptr.i,icptr.i,idptr.i);
+					VQ2TO2(iaptr,ibptr,icptr,idptr);
 				}
 			}
 		}
@@ -1078,10 +1072,12 @@ static void RoQReset( void ) {
 	
 	if (currentHandle < 0) return;
 
+	Sys_EndStreamedFile(cinTable[currentHandle].iFile);
 	FS_FCloseFile( cinTable[currentHandle].iFile );
 	FS_FOpenFileRead (cinTable[currentHandle].fileName, &cinTable[currentHandle].iFile, qtrue);
 	// let the background thread start reading ahead
-	FS_Read (cin.file, 16, cinTable[currentHandle].iFile);
+	Sys_BeginStreamedFile( cinTable[currentHandle].iFile, 0x10000 );
+	Sys_StreamedRead (cin.file, 16, 1, cinTable[currentHandle].iFile);
 	RoQ_init();
 	cinTable[currentHandle].status = FMV_LOOPED;
 }
@@ -1102,7 +1098,7 @@ static void RoQInterrupt(void)
         
 	if (currentHandle < 0) return;
 
-	FS_Read( cin.file, cinTable[currentHandle].RoQFrameSize+8, cinTable[currentHandle].iFile );
+	Sys_StreamedRead( cin.file, cinTable[currentHandle].RoQFrameSize+8, 1, cinTable[currentHandle].iFile );
 	if ( cinTable[currentHandle].RoQPlayed >= cinTable[currentHandle].ROQSize ) { 
 		if (cinTable[currentHandle].holdAtEnd==qfalse) {
 			if (cinTable[currentHandle].looping) {
@@ -1147,17 +1143,17 @@ redump:
 		case	ZA_SOUND_MONO:
 			if (!cinTable[currentHandle].silent) {
 				ssize = RllDecodeMonoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
-                                S_RawSamples( 0, ssize, 22050, 2, 1, (byte *)sbuf, 1.0f );
+                                S_RawSamples( ssize, 22050, 2, 1, (byte *)sbuf, 1.0f );
 			}
 			break;
 		case	ZA_SOUND_STEREO:
 			if (!cinTable[currentHandle].silent) {
 				if (cinTable[currentHandle].numQuads == -1) {
 					S_Update();
-					s_rawend[0] = s_soundtime;
+					s_rawend = s_soundtime;
 				}
 				ssize = RllDecodeStereoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
-                                S_RawSamples( 0, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f );
+                                S_RawSamples( ssize, 22050, 2, 2, (byte *)sbuf, 1.0f );
 			}
 			break;
 		case	ROQ_QUAD_INFO:
@@ -1202,8 +1198,8 @@ redump:
 	cinTable[currentHandle].roq_id		 = framedata[0] + framedata[1]*256;
 	cinTable[currentHandle].RoQFrameSize = framedata[2] + framedata[3]*256 + framedata[4]*65536;
 	cinTable[currentHandle].roq_flags	 = framedata[6] + framedata[7]*256;
-	cinTable[currentHandle].roqF0		 = (signed char)framedata[7];
-	cinTable[currentHandle].roqF1		 = (signed char)framedata[6];
+	cinTable[currentHandle].roqF0		 = (char)framedata[7];
+	cinTable[currentHandle].roqF1		 = (char)framedata[6];
 
 	if (cinTable[currentHandle].RoQFrameSize>65536||cinTable[currentHandle].roq_id==0x1084) {
 		Com_DPrintf("roq_size>65536||roq_id==0x1084\n");
@@ -1218,7 +1214,7 @@ redump:
 // one more frame hits the dust
 //
 //	assert(cinTable[currentHandle].RoQFrameSize <= 65536);
-//	r = FS_Read( cin.file, cinTable[currentHandle].RoQFrameSize+8, cinTable[currentHandle].iFile );
+//	r = Sys_StreamedRead( cin.file, cinTable[currentHandle].RoQFrameSize+8, 1, cinTable[currentHandle].iFile );
 	cinTable[currentHandle].RoQPlayed	+= cinTable[currentHandle].RoQFrameSize+8;
 }
 
@@ -1276,6 +1272,7 @@ static void RoQShutdown( void ) {
 	cinTable[currentHandle].status = FMV_IDLE;
 
 	if (cinTable[currentHandle].iFile) {
+		Sys_EndStreamedFile( cinTable[currentHandle].iFile );
 		FS_FCloseFile( cinTable[currentHandle].iFile );
 		cinTable[currentHandle].iFile = 0;
 	}
@@ -1335,6 +1332,7 @@ Fetch and decompress the pending frame
 
 e_status CIN_RunCinematic (int handle)
 {
+        // bk001204 - init
 	int	start = 0;
 	int     thisTime = 0;
 
@@ -1474,6 +1472,8 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 	{
 		RoQ_init();
 //		FS_Read (cin.file, cinTable[currentHandle].RoQFrameSize+8, cinTable[currentHandle].iFile);
+		// let the background thread start reading ahead
+		Sys_BeginStreamedFile( cinTable[currentHandle].iFile, 0x10000 );
 
 		cinTable[currentHandle].status = FMV_PLAY;
 		Com_DPrintf("trFMV::play(), playing %s\n", arg);
@@ -1484,7 +1484,7 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 		
 		Con_Close();
 
-		s_rawend[0] = s_soundtime;
+		s_rawend = s_soundtime;
 
 		return currentHandle;
 	}

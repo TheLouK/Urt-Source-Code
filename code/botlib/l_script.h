@@ -161,7 +161,7 @@ typedef struct token_s
 	int subtype;					//last read token sub type
 #ifdef NUMBERVALUE
 	unsigned long int intvalue;	//integer value
-	float floatvalue;			//floating point value
+	double floatvalue;			//floating point value
 #endif //NUMBERVALUE
 	char *whitespace_p;				//start of white space before token
 	char *endwhitespace_p;			//start of white space before token
@@ -218,7 +218,7 @@ void StripSingleQuotes(char *string);
 //read a possible signed integer
 signed long int ReadSignedInt(script_t *script);
 //read a possible signed floating point number
-float ReadSignedFloat(script_t *script);
+double ReadSignedFloat(script_t *script);
 //set an array with punctuations, NULL restores default C/C++ set
 void SetScriptPunctuations(script_t *script, punctuation_t *p);
 //set script flags
@@ -240,8 +240,8 @@ void FreeScript(script_t *script);
 //set the base folder to load files from
 void PS_SetBaseFolder(char *path);
 //print a script error with filename and line number
-void QDECL ScriptError(script_t *script, char *str, ...) __attribute__ ((format (printf, 2, 3)));
+void QDECL ScriptError(script_t *script, char *str, ...);
 //print a script warning with filename and line number
-void QDECL ScriptWarning(script_t *script, char *str, ...) __attribute__ ((format (printf, 2, 3)));
+void QDECL ScriptWarning(script_t *script, char *str, ...);
 
 

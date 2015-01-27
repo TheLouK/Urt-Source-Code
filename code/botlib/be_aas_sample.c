@@ -44,6 +44,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "be_aas_funcs.h"
 #include "be_aas_def.h"
 
+extern botlib_import_t botimport;
 
 //#define AAS_SAMPLE_DEBUG
 
@@ -150,7 +151,7 @@ aas_link_t *AAS_AllocAASLink(void)
 	if (!link)
 	{
 #ifndef BSPC
-		if (botDeveloper)
+		if (bot_developer)
 #endif
 		{
 			botimport.Print(PRT_FATAL, "empty aas link heap\n");

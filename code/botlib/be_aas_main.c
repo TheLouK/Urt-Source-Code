@@ -60,9 +60,9 @@ void QDECL AAS_Error(char *fmt, ...)
 	va_list arglist;
 
 	va_start(arglist, fmt);
-	Q_vsnprintf(str, sizeof(str), fmt, arglist);
+	vsprintf(str, fmt, arglist);
 	va_end(arglist);
-	botimport.Print(PRT_FATAL, "%s", str);
+	botimport.Print(PRT_FATAL, str);
 } //end of the function AAS_Error
 //===========================================================================
 //
@@ -216,7 +216,7 @@ void AAS_ContinueInit(float time)
 		//save the AAS file
 		if (AAS_WriteAASFile(aasworld.filename))
 		{
-			botimport.Print(PRT_MESSAGE, "%s written successfully\n", aasworld.filename);
+			botimport.Print(PRT_MESSAGE, "%s written succesfully\n", aasworld.filename);
 		} //end if
 		else
 		{
@@ -247,7 +247,7 @@ int AAS_StartFrame(float time)
 	//
 	aasworld.frameroutingupdates = 0;
 	//
-	if (botDeveloper)
+	if (bot_developer)
 	{
 		if (LibVarGetValue("showcacheupdates"))
 		{
