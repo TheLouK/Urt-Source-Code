@@ -218,6 +218,12 @@ typedef struct client_s {
 	
 	int				oldServerTime;
 	qboolean		csUpdated[MAX_CONFIGSTRINGS+1];	
+
+	qboolean		weapongiven[12];
+	qboolean		itemsgiven[5];
+	// Change char to int if UrT 4.2
+	// char 			flagweapon;
+
 	int             numcmds;    // number of client commands so far (in this time period), for sv_floodprotect
 
     // ********
